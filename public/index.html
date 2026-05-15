@@ -357,10 +357,23 @@
             const res = await fetch('/api/products', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            data = (await res.json()) || { products: [], reviews: {} };
-            showReview();
+            const result = await res.json();
+            
+            // تحويل البيانات إلى الصيغة الصحيحة
+            if (Array.isArray(result.products)) {
+                data.products = result.products;
+                data.reviews = result.reviews || {};
+            } else if (Array.isArray(result)) {
+                data.products = result;
+                data.reviews = {};
+            } else {
+                data = result || { products: [], reviews: {} };
+            }
+            
+            console.log('✓ Data loaded:', data);
         } catch (error) {
-            console.error(error);
+            console.error('Error loading data:', error);
+            data = { products: [], reviews: {} };
         }
     }
 
@@ -480,7 +493,10 @@
     }
 
     function showReview() {
-        const pending = data.products.find(p => !data.reviews[p.id]);
+        console.log('showReview - data:', data);
+        console.log('showReview - products count:', data.products?.length);
+        
+        const pending = data.products?.find(p => !data.reviews[p.id]);
         const content = document.getElementById('review-content');
 
         if (!pending) {
@@ -488,6 +504,7 @@
             return;
         }
 
+        console.log('pending product:', pending);
         const reviewed = Object.keys(data.reviews).length;
         content.innerHTML = `
             <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
