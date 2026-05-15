@@ -108,21 +108,26 @@ app.get('/api/health', (req, res) => {
 // Login
 app.post('/api/auth/login', (req, res) => {
     try {
+        console.log('🔐 Login attempt:', req.body);
         const { username, password } = req.body;
         
         if (!username || !password) {
+            console.log('❌ Missing credentials');
             return res.status(400).json({ success: false, error: 'Username and password required' });
         }
 
         const user = auth.validateUser(username, password);
+        console.log('🔍 User found:', user ? `${user.username} (${user.role})` : 'null');
+        
         if (!user) {
+            console.log('❌ Invalid credentials for user:', username);
             return res.status(401).json({ success: false, error: 'Invalid credentials' });
         }
 
         // Create token (simple JWT-like token)
         const token = Buffer.from(JSON.stringify({ id: user.id, username: user.username })).toString('base64');
         
-        res.json({ 
+        const response = { 
             success: true, 
             user: {
                 id: user.id,
@@ -131,9 +136,12 @@ app.post('/api/auth/login', (req, res) => {
                 permissions: user.permissions
             },
             token 
-        });
+        };
+        
+        console.log('✅ Login successful:', user.username);
+        res.json(response);
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('❌ Login error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
