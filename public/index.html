@@ -378,23 +378,38 @@
         const err = document.getElementById('loginError');
 
         if (!username || !password) {
-            err.textContent = 'الرجاء إدخال البيانات';
+            err.textContent = '⚠️ الرجاء إدخال البيانات';
             return;
         }
 
         try {
-            console.log('🔐 محاولة الدخول...', username);
+            err.textContent = '⏳ جاري التحقق...';
+            console.log('🔐 محاولة الدخول...', { username, password });
             
-            const res = await fetch('/api/auth/login', {
+            const url = '/api/auth/login';
+            console.log('📡 الطلب إلى:', url);
+            
+            const res = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
                 body: JSON.stringify({ username, password })
             });
 
-            console.log('✓ Response status:', res.status);
+            console.log('📊 Response status:', res.status);
+            console.log('📊 Response headers:', res.headers);
+            
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error('❌ خطأ HTTP:', res.status, errorText);
+                err.textContent = `❌ خطأ ${res.status}: ${errorText || 'فشل الدخول'}`;
+                return;
+            }
             
             const result = await res.json();
-            console.log('✓ Response:', result);
+            console.log('✓ Response JSON:', result);
 
             if (result.success && result.token) {
                 console.log('✓ تم الدخول بنجاح!');
@@ -408,11 +423,11 @@
                 console.log('✓ تم تحميل التطبيق!');
             } else {
                 console.error('❌ خطأ:', result.error);
-                err.textContent = result.error || 'بيانات غير صحيحة!';
+                err.textContent = '❌ ' + (result.error || 'بيانات غير صحيحة!');
             }
         } catch (error) {
             console.error('❌ خطأ في الاتصال:', error);
-            err.textContent = 'خطأ في الاتصال! ' + error.message;
+            err.textContent = '❌ خطأ في الاتصال: ' + error.message;
         }
     }
 
