@@ -362,16 +362,18 @@ app.post('/api/products', (req, res) => {
 
         const products = readProducts();
         const product = {
-            id: Date.now(),
+            id: Date.now().toString(),
             link: req.body.link,
             name: req.body.name,
             price: req.body.price || '',
             asin: req.body.asin || '',
             brand: req.body.brand || '',
             category: req.body.category || '',
+            imageUrl: req.body.imageUrl || '',
+            description: req.body.description || '',
             notes: req.body.notes || '',
             addedBy: userId || null,
-            addedAt: new Date().toLocaleString('ar-EG')
+            addedAt: new Date().toISOString()
         };
 
         products.push(product);
