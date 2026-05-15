@@ -76,6 +76,62 @@ function getLocalIP() {
 
 // API Routes
 
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', server: 'running' });
+});
+
+// Bulk upload products
+app.post('/api/products/bulk', async (req, res) => {
+    try {
+        console.log('📤 Bulk upload:', req.body.products?.length, 'products');
+        const products = req.body.products || [];
+
+        if (!Array.isArray(products) || products.length === 0) {
+            return res.status(400).json({ success: false, error: 'products array required' });
+        }
+
+        let success = 0, failed = 0;
+        const errors = [];
+
+        for (let i = 0; i < products.length; i++) {
+            try {
+                const p = products[i];
+                if (!p.name || !p.link) {
+                    failed++;
+                    errors.push(`Row ${i + 1}: Missing data`);
+                    continue;
+                }
+
+                const product = new Product({
+                    _id: new mongoose.Types.ObjectId(),
+                    id: Date.now() + i,
+                    link: String(p.link).trim(),
+                    name: String(p.name).trim(),
+                    price: String(p.price || '').trim(),
+                    asin: String(p.asin || '').trim(),
+                    brand: String(p.brand || '').trim(),
+                    category: String(p.category || '').trim(),
+                    notes: String(p.notes || '').trim(),
+                    addedAt: new Date().toLocaleString('ar-EG')
+                });
+
+                await product.save();
+                success++;
+            } catch (err) {
+                failed++;
+                errors.push(`Row ${i + 1}: ${err.message}`);
+            }
+        }
+
+        console.log(`✓ Bulk complete: ${success} success, ${failed} failed`);
+        res.json({ success: true, success, failed, errors: errors.slice(0, 5) });
+    } catch (error) {
+        console.error('❌ Bulk error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Get all products
 app.get('/api/products', async (req, res) => {
     try {
