@@ -249,110 +249,88 @@
             const file = event.target.files[0];
             if (!file) return;
 
-            console.log('📁 بدء رفع الملف:', file.name);
+            console.log('📁 رفع الملف:', file.name);
             showMessage('addMessage', '⏳ جاري معالجة الملف...', 'success');
 
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
-                    const workbook = XLSX.read(e.target.result, { type: 'array', cellFormula: false });
-                    const sheetName = workbook.SheetNames[0];
-                    const sheet = workbook.Sheets[sheetName];
-                    
-                    // قراءة البيانات مع معالجة أفضل للعربي
+                    const workbook = XLSX.read(e.target.result, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const rows = XLSX.utils.sheet_to_json(sheet, { 
                         defval: '',
                         blankrows: false,
                         header: 1
                     });
 
-                    console.log('📝 الصفوف الخام:', rows);
-
                     if (rows.length < 2) {
-                        showMessage('addMessage', '❌ الملف فارغ أو لا يحتوي على بيانات', 'error');
+                        showMessage('addMessage', '❌ الملف فارغ', 'error');
                         return;
                     }
 
-                    // استخراج أسماء الأعمدة من الصف الأول
+                    // استخراج الأعمدة من الصف الأول
                     const headers = rows[0];
-                    console.log('📋 الأعمدة:', headers);
-
-                    let count = 0;
-                    let failed = 0;
-                    const errors = [];
+                    const productsToUpload = [];
 
                     // معالجة الصفوف (من الصف الثاني)
                     for (let i = 1; i < rows.length; i++) {
                         const row = rows[i];
                         if (!row || row.length === 0) continue;
 
-                        // تحويل كل صف لـ object بناءً على الأعمدة
                         const rowObj = {};
                         headers.forEach((header, idx) => {
                             rowObj[header] = row[idx] || '';
                         });
 
-                        console.log(`🔍 الصف ${i}:`, rowObj);
-
-                        // البحث عن الرابط بالعربي أو الإنجليزي
                         const link = rowObj['رابط'] || rowObj['link'] || '';
                         const name = rowObj['الاسم'] || rowObj['name'] || '';
 
                         if (link && name) {
-                            const product = {
-                                link: link.toString().trim(),
-                                name: name.toString().trim(),
-                                price: (rowObj['السعر'] || rowObj['price'] || '').toString().trim(),
-                                asin: (rowObj['ASIN'] || '').toString().trim(),
-                                brand: (rowObj['البراند'] || rowObj['brand'] || '').toString().trim(),
-                                category: (rowObj['القسم'] || rowObj['category'] || '').toString().trim(),
-                                notes: (rowObj['ملاحظات'] || rowObj['notes'] || '').toString().trim()
-                            };
-
-                            console.log(`📤 إرسال:`, product);
-
-                            try {
-                                const response = await fetch('/api/products', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(product)
-                                });
-
-                                const result = await response.json();
-
-                                if (response.ok && result.success) {
-                                    count++;
-                                    console.log(`✓ تم إضافة المنتج ${count}`);
-                                } else {
-                                    failed++;
-                                    errors.push(`الصف ${i}: ${result.error || 'خطأ'}`);
-                                }
-                            } catch (err) {
-                                failed++;
-                                errors.push(`الصف ${i}: خطأ في الاتصال`);
-                                console.error('❌', err);
-                            }
+                            productsToUpload.push({
+                                link: String(link).trim(),
+                                name: String(name).trim(),
+                                price: String(rowObj['السعر'] || rowObj['price'] || '').trim(),
+                                asin: String(rowObj['ASIN'] || '').trim(),
+                                brand: String(rowObj['البراند'] || rowObj['brand'] || '').trim(),
+                                category: String(rowObj['القسم'] || rowObj['category'] || '').trim(),
+                                notes: String(rowObj['ملاحظات'] || rowObj['notes'] || '').trim()
+                            });
                         }
                     }
 
-                    // رسالة النتيجة
-                    let message = count > 0 ? `✓ تم رفع ${count} منتج بنجاح!` : '❌ لم يتم رفع أي منتج';
-                    if (failed > 0) message += ` (${failed} فشل)`;
-                    
-                    showMessage('addMessage', message, count > 0 ? 'success' : 'error');
-                    console.log(`📊 النتيجة: ${count} نجح، ${failed} فشل`);
-                    
+                    if (productsToUpload.length === 0) {
+                        showMessage('addMessage', '❌ لم يتم العثور على منتجات صالحة', 'error');
+                        return;
+                    }
+
+                    console.log(`📤 إرسال ${productsToUpload.length} منتجات...`);
+                    showMessage('addMessage', `⏳ إرسال ${productsToUpload.length} منتج...`, 'success');
+
+                    // إرسال الملف كاملاً دفعة واحدة
+                    const response = await fetch('/api/products/bulk', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ products: productsToUpload })
+                    });
+
+                    const result = await response.json();
+                    console.log('📊 النتيجة:', result);
+
+                    if (result.success) {
+                        let message = `✓ تم رفع ${result.success} منتج بنجاح!`;
+                        if (result.failed > 0) message += ` (${result.failed} فشل)`;
+                        showMessage('addMessage', message, 'success');
+                    } else {
+                        showMessage('addMessage', `❌ خطأ: ${result.error}`, 'error');
+                    }
+
                     document.getElementById('excelFile').value = '';
-                    setTimeout(() => loadData(), 1000);
+                    setTimeout(() => loadData(), 1500);
 
                 } catch (error) {
                     console.error('❌ خطأ:', error);
-                    showMessage('addMessage', `❌ خطأ في قراءة الملف: ${error.message}`, 'error');
+                    showMessage('addMessage', `❌ خطأ: ${error.message}`, 'error');
                 }
-            };
-            
-            reader.onerror = () => {
-                showMessage('addMessage', '❌ خطأ في قراءة الملف', 'error');
             };
             
             reader.readAsArrayBuffer(file);
