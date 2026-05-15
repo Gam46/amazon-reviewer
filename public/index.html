@@ -70,6 +70,95 @@
         .msg-error { background: #ffebee; color: #f44336; }
 
         .hidden { display: none !important; }
+
+        /* ===== MOBILE RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .login-card { padding: 20px; }
+            .login-title { font-size: 22px; }
+            
+            .app-header { padding: 15px; margin-bottom: 15px; }
+            .header-top { flex-direction: column; gap: 10px; }
+            .header-title h1 { font-size: 18px; }
+            .user-section { width: 100%; text-align: right; }
+            
+            .content-card { padding: 15px; }
+            h2 { font-size: 18px; margin-bottom: 15px; }
+            
+            .tabs { gap: 6px; padding-left: 8px; flex-wrap: wrap; overflow-x: auto; }
+            .tab-btn { padding: 8px 12px; font-size: 12px; white-space: nowrap; }
+            
+            .form-group input, .form-group textarea, .form-group select { font-size: 16px; padding: 12px; }
+            .form-group textarea { min-height: 60px; }
+            
+            .btn-primary { padding: 12px; font-size: 14px; }
+            .btn-small { padding: 8px 10px; font-size: 11px; margin-right: 5px; margin-bottom: 5px; }
+            
+            .stats-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 15px; }
+            .stat-card { padding: 15px; }
+            .stat-num { font-size: 20px; }
+            .stat-label { font-size: 11px; }
+            
+            /* جدول النتائج */
+            table { font-size: 12px; }
+            th, td { padding: 8px; }
+            
+            /* أزرار الحالة */
+            [data-status-btn] { padding: 10px 12px !important; margin: 3px 2px !important; font-size: 12px !important; width: auto; }
+            
+            /* البحث والفيلتر */
+            [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+            #asin-search, #name-search { width: 100%; }
+            
+            /* أزرار الإجراءات */
+            .btn-small { display: block; width: 100%; margin-bottom: 5px; text-align: center; }
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 8px; }
+            .login-card { padding: 15px; }
+            .login-title { font-size: 20px; }
+            
+            .app-header { padding: 12px; }
+            .header-title h1 { font-size: 16px; }
+            .header-title p { font-size: 11px; }
+            .user-info { font-size: 12px; }
+            .logout-btn { padding: 6px 10px; font-size: 11px; }
+            
+            .content-card { padding: 12px; }
+            h2 { font-size: 16px; margin-bottom: 12px; }
+            
+            .tabs { gap: 4px; padding-left: 6px; }
+            .tab-btn { padding: 6px 10px; font-size: 11px; }
+            
+            .form-group { margin-bottom: 12px; }
+            .form-group label { font-size: 12px; margin-bottom: 4px; }
+            .form-group input, .form-group textarea, .form-group select { font-size: 14px; padding: 10px; }
+            .form-group textarea { min-height: 50px; }
+            
+            .btn-primary { padding: 10px; font-size: 13px; margin-top: 8px; }
+            
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+            .stat-card { padding: 12px; }
+            .stat-num { font-size: 18px; }
+            .stat-label { font-size: 10px; margin-top: 6px; }
+            
+            table { font-size: 11px; margin: 15px 0; }
+            th, td { padding: 6px; }
+            
+            /* أزرار الحالة */
+            [data-status-btn] { padding: 8px 10px !important; margin: 2px 1px !important; font-size: 11px !important; }
+            
+            /* البحث */
+            [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+            
+            /* أزرار الإجراءات */
+            .btn-small { display: block; width: 100%; margin-bottom: 4px; padding: 8px 6px; font-size: 10px; }
+            
+            /* overflow للجدول */
+            .content-card > table { width: 100vw; margin-right: -12px; }
+            .content-card { overflow-x: hidden; }
+        }
     </style>
 </head>
 <body>
@@ -584,8 +673,30 @@
             </div>
 
             <button class="btn-primary" onclick="saveReview('${pending.id}')">✓ حفظ والتالي</button>
-            <button class="btn-primary btn-secondary" style="margin-top: 5px;" onclick="showReview()">⏭️ تخطي</button>
+            <button class="btn-primary btn-secondary" style="margin-top: 5px;" onclick="skipReview()">⏭️ تخطي</button>
         `;
+    }
+
+    function skipReview() {
+        // تنظيف البيانات والانتقال للمنتج التالي
+        selectedStatus = null;
+        document.getElementById('supplier').value = '';
+        document.getElementById('purchase-price').value = '';
+        document.getElementById('quantity').value = '';
+        document.getElementById('purchased').checked = false;
+        document.getElementById('review-notes').value = '';
+        
+        // إزالة التظليل من الأزرار
+        const buttons = document.querySelectorAll('[data-status-btn]');
+        buttons.forEach(btn => {
+            btn.style.background = 'white';
+            btn.style.color = '#333';
+            btn.style.fontWeight = '600';
+        });
+        
+        // عرض المنتج التالي
+        showReview();
+    }
     }
 
     function selectStatus(status) {
