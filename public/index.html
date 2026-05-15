@@ -249,15 +249,34 @@
             const file = event.target.files[0];
             if (!file) return;
 
+            console.log('📁 بدء رفع الملف:', file.name, file.size, 'bytes');
+
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
+                    console.log('📖 قراءة الملف...');
                     const workbook = XLSX.read(e.target.result, { type: 'array' });
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const sheetNames = workbook.SheetNames;
+                    console.log('📊 الأوراق المتاحة:', sheetNames);
+                    
+                    const sheet = workbook.Sheets[sheetNames[0]];
                     const rows = XLSX.utils.sheet_to_json(sheet);
+                    console.log('📝 عدد الصفوف:', rows.length);
+                    console.log('📋 البيانات المقروءة:', rows);
+
+                    if (rows.length === 0) {
+                        showMessage('addMessage', '❌ الملف فارغ - تأكد من وجود بيانات', 'error');
+                        return;
+                    }
 
                     let count = 0;
-                    for (const row of rows) {
+                    let failed = 0;
+                    const errors = [];
+
+                    for (let i = 0; i < rows.length; i++) {
+                        const row = rows[i];
+                        console.log(`🔍 معالجة الصف ${i + 1}:`, row);
+
                         if (row['رابط'] || row['link']) {
                             const product = {
                                 link: row['رابط'] || row['link'] || '',
@@ -269,23 +288,66 @@
                                 notes: row['ملاحظات'] || row['notes'] || ''
                             };
 
-                            const response = await fetch('/api/products', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(product)
-                            });
+                            console.log(`📤 إرسال المنتج:`, product);
 
-                            if (response.ok) count++;
+                            try {
+                                const response = await fetch('/api/products', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(product)
+                                });
+
+                                const result = await response.json();
+                                console.log(`✅ الرد من الخادم:`, result);
+
+                                if (response.ok && result.success) {
+                                    count++;
+                                    console.log(`✓ تم إضافة المنتج رقم ${count}`);
+                                } else {
+                                    failed++;
+                                    errors.push(`الصف ${i + 1}: ${result.error || 'خطأ غير معروف'}`);
+                                    console.error(`❌ فشل الصف ${i + 1}`);
+                                }
+                            } catch (fetchError) {
+                                failed++;
+                                errors.push(`الصف ${i + 1}: خطأ في الاتصال - ${fetchError.message}`);
+                                console.error(`❌ خطأ في الاتصال للصف ${i + 1}:`, fetchError);
+                            }
+                        } else {
+                            console.warn(`⚠️ الصف ${i + 1} بدون رابط - يتم تخطيه`);
                         }
                     }
 
-                    showMessage('addMessage', `✓ تم رفع ${count} منتج بنجاح`, 'success');
+                    let message = `✓ تم رفع ${count} منتج بنجاح`;
+                    let messageType = 'success';
+
+                    if (failed > 0) {
+                        message = `✓ ${count} نجح | ❌ ${failed} فشل\n`;
+                        message += errors.slice(0, 3).join('\n');
+                        messageType = count > 0 ? 'success' : 'error';
+                    }
+
+                    if (count === 0 && failed === 0) {
+                        message = '⚠️ لم يتم العثور على صفوف بيانات صالحة (تأكد من وجود عمود "رابط")';
+                        messageType = 'error';
+                    }
+
+                    showMessage('addMessage', message, messageType);
+                    console.log('📊 النتائج النهائية - الناجح:', count, 'الفاشل:', failed);
+                    
                     document.getElementById('excelFile').value = '';
                     loadData();
                 } catch (error) {
-                    showMessage('addMessage', '❌ خطأ في قراءة الملف', 'error');
+                    console.error('❌ خطأ كبير:', error);
+                    showMessage('addMessage', `❌ خطأ في الملف: ${error.message}`, 'error');
                 }
             };
+            
+            reader.onerror = () => {
+                console.error('❌ خطأ في قراءة الملف');
+                showMessage('addMessage', '❌ خطأ في قراءة الملف - تأكد من صيغة الملف', 'error');
+            };
+            
             reader.readAsArrayBuffer(file);
         }
 
