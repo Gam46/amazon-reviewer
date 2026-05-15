@@ -371,6 +371,7 @@
     let currentPage = 1;
     let filteredProducts = [];
     let pageSize = 10;
+    let skippedProducts = new Set();  // المنتجات المتخطاة
 
     async function login() {
         const username = document.getElementById('username').value;
@@ -668,11 +669,23 @@
         console.log('showReview - data:', data);
         console.log('showReview - products count:', data.products?.length);
         
-        const pending = data.products?.find(p => !data.reviews[p.id]);
+        // البحث عن منتج لم تتم مراجعته وليس متخطى
+        const pending = data.products?.find(p => !data.reviews[p.id] && !skippedProducts.has(p.id));
         const content = document.getElementById('review-content');
 
         if (!pending) {
-            content.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">✓ تمت مراجعة جميع المنتجات!</p>';
+            // لو جميع المنتجات تم تخطيها أو مراجعتها
+            if (skippedProducts.size > 0) {
+                content.innerHTML = `
+                    <p style="text-align: center; color: #999; padding: 20px;">
+                        ✓ تمت مراجعة أو تخطي جميع المنتجات!<br>
+                        <small>تم تخطي ${skippedProducts.size} منتج</small>
+                    </p>
+                    <button class="btn-primary" onclick="resetSkipped()" style="margin: 10px auto; display: block;">🔄 إعادة عرض المتخطاة</button>
+                `;
+            } else {
+                content.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">✓ تمت مراجعة جميع المنتجات!</p>';
+            }
             return;
         }
 
@@ -734,13 +747,27 @@
     }
 
     function skipReview() {
-        // تنظيف البيانات والانتقال للمنتج التالي
+        console.log('⏭️ تخطي المنتج...');
+        
+        // العثور على المنتج الحالي وإضافته للقائمة المتخطاة
+        const currentPending = data.products?.find(p => !data.reviews[p.id] && !skippedProducts.has(p.id));
+        if (currentPending) {
+            skippedProducts.add(currentPending.id);
+            console.log('✓ تم تخطي:', currentPending.name, '| ID:', currentPending.id);
+        }
+        
+        // تنظيف الحقول
         selectedStatus = null;
-        document.getElementById('supplier').value = '';
-        document.getElementById('purchase-price').value = '';
-        document.getElementById('quantity').value = '';
-        document.getElementById('purchased').checked = false;
-        document.getElementById('review-notes').value = '';
+        const supplierEl = document.getElementById('supplier');
+        if (supplierEl) supplierEl.value = '';
+        const priceEl = document.getElementById('purchase-price');
+        if (priceEl) priceEl.value = '';
+        const qtyEl = document.getElementById('quantity');
+        if (qtyEl) qtyEl.value = '';
+        const purchasedEl = document.getElementById('purchased');
+        if (purchasedEl) purchasedEl.checked = false;
+        const notesEl = document.getElementById('review-notes');
+        if (notesEl) notesEl.value = '';
         
         // إزالة التظليل من الأزرار
         const buttons = document.querySelectorAll('[data-status-btn]');
@@ -751,6 +778,12 @@
         });
         
         // عرض المنتج التالي
+        showReview();
+    }
+
+    function resetSkipped() {
+        skippedProducts.clear();
+        console.log('🔄 إعادة عرض المنتجات المتخطاة');
         showReview();
     }
 
