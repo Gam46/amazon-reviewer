@@ -200,6 +200,13 @@
                 </select>
             </div>
             <div>
+                <label style="display: block; font-weight: 600; color: #333; margin-bottom: 6px; font-size: 13px;">🔍 البحث بـ ASIN:</label>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="asin-search" placeholder="أدخل ASIN..." onkeyup="applyFilter()" style="flex: 1; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                    <button onclick="clearAsinSearch()" style="padding: 10px 12px; background: #f44336; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">✕</button>
+                </div>
+            </div>
+            <div style="grid-column: 1;">
                 <label style="display: block; font-weight: 600; color: #333; margin-bottom: 6px; font-size: 13px;">عدد الصفوف:</label>
                 <select id="page-size" onchange="applyFilter()" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
                     <option value="5">5 منتجات</option>
@@ -208,6 +215,18 @@
                     <option value="50">50 منتج</option>
                 </select>
             </div>
+            <div style="grid-column: 2;">
+                <label style="display: block; font-weight: 600; color: #333; margin-bottom: 6px; font-size: 13px;">🔍 البحث بـ الاسم:</label>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="name-search" placeholder="ابحث عن الاسم..." onkeyup="applyFilter()" style="flex: 1; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                    <button onclick="clearNameSearch()" style="padding: 10px 12px; background: #f44336; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">✕</button>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;">
+            <button class="btn-small" style="background: #4caf50;" onclick="downloadTemplate()">📥 تحميل قالب</button>
+            <button class="btn-small danger" onclick="deleteAllProducts()">🧹 حذف الكل</button>
         </div>
 
         <div style="overflow-x: auto;">
@@ -219,6 +238,7 @@
                         <th>الحالة</th>
                         <th>المورد</th>
                         <th>الشراء</th>
+                        <th>الإجراءات</th>
                     </tr>
                 </thead>
                 <tbody id="results-table"></tbody>
@@ -616,18 +636,49 @@
 
     function applyFilter() {
         const statusFilter = document.getElementById('status-filter').value;
+        const asinSearch = document.getElementById('asin-search').value.toLowerCase().trim();
+        const nameSearch = document.getElementById('name-search').value.toLowerCase().trim();
         pageSize = parseInt(document.getElementById('page-size').value) || 10;
         
         filteredProducts = data.products.filter(p => {
-            if (!statusFilter) return true;
-            const r = data.reviews[p.id];
+            // فيلتر الحالة
+            let passesStatusFilter = true;
+            if (statusFilter) {
+                const r = data.reviews[p.id];
+                if (statusFilter === 'لم يراجع') {
+                    passesStatusFilter = !r;
+                } else {
+                    passesStatusFilter = r && r.status === statusFilter;
+                }
+            }
             
-            if (statusFilter === 'لم يراجع') return !r;
-            return r && r.status === statusFilter;
+            // فيلتر ASIN
+            let passesAsinFilter = true;
+            if (asinSearch) {
+                passesAsinFilter = (p.asin || '').toLowerCase().includes(asinSearch);
+            }
+            
+            // فيلتر الاسم
+            let passesNameFilter = true;
+            if (nameSearch) {
+                passesNameFilter = (p.name || '').toLowerCase().includes(nameSearch);
+            }
+            
+            return passesStatusFilter && passesAsinFilter && passesNameFilter;
         });
 
         currentPage = 1;
         displayResults();
+    }
+
+    function clearAsinSearch() {
+        document.getElementById('asin-search').value = '';
+        applyFilter();
+    }
+
+    function clearNameSearch() {
+        document.getElementById('name-search').value = '';
+        applyFilter();
     }
 
     function displayResults() {
@@ -647,11 +698,18 @@
                     <td>${r ? `<span class="status-badge ${statusClass}">${r.status}</span>` : '-'}</td>
                     <td>${r?.supplier || '-'}</td>
                     <td><span class="status-badge ${r?.purchased ? 'status-yes' : 'status-no'}">${r?.purchased ? 'نعم' : 'لا'}</span></td>
+                    <td>
+                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                            ${r ? `<button class="btn-small" style="background: #2196F3;" onclick="resetReview('${p.id}')">🔄 إعادة</button>` : ''}
+                            <button class="btn-small" style="background: #4caf50;" onclick="duplicateProduct('${p.id}')">📋 نسخ</button>
+                            <button class="btn-small danger" onclick="deleteProduct('${p.id}')">🗑️ حذف</button>
+                        </div>
+                    </td>
                 </tr>
             `;
         });
 
-        document.getElementById('results-table').innerHTML = html || '<tr><td colspan="5" style="text-align: center; color: #ccc;">لا توجد نتائج</td></tr>';
+        document.getElementById('results-table').innerHTML = html || '<tr><td colspan="6" style="text-align: center; color: #ccc;">لا توجد نتائج</td></tr>';
         document.getElementById('page-info').textContent = `الصفحة ${currentPage} من ${totalPages}`;
     }
 
@@ -737,6 +795,80 @@
         link.href = URL.createObjectURL(blob);
         link.download = `تقرير_منتجات_${new Date().toLocaleDateString('ar-EG')}.csv`;
         link.click();
+    }
+
+    // Action functions
+    async function deleteProduct(id) {
+        if (!confirm('تأكيد حذف هذا المنتج؟')) return;
+        
+        try {
+            await fetch(`/api/products/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            alert('✓ تم الحذف!');
+            await loadData();
+            showResults();
+        } catch (error) {
+            alert('❌ خطأ!');
+        }
+    }
+
+    async function deleteAllProducts() {
+        if (!confirm('تحذير: سيتم حذف جميع المنتجات!\n\nهل أنت متأكد؟')) return;
+        if (!confirm('هذا الإجراء لا يمكن التراجع عنه!\n\nهل أنت متأكد فعلاً؟')) return;
+        
+        try {
+            await fetch('/api/all', {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            alert('✓ تم حذف جميع المنتجات!');
+            await loadData();
+            showResults();
+        } catch (error) {
+            alert('❌ خطأ!');
+        }
+    }
+
+    async function resetReview(id) {
+        if (!confirm('إعادة مراجعة هذا المنتج؟')) return;
+        
+        try {
+            await fetch(`/api/reviews/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            alert('✓ تمت الإعادة!');
+            await loadData();
+            showResults();
+        } catch (error) {
+            alert('❌ خطأ!');
+        }
+    }
+
+    async function duplicateProduct(id) {
+        const product = data.products.find(p => p.id == id);
+        if (!product) return;
+        
+        try {
+            await fetch('/api/products', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    ...product,
+                    name: `${product.name} (نسخة)`
+                })
+            });
+            alert('✓ تم نسخ المنتج!');
+            await loadData();
+            showResults();
+        } catch (error) {
+            alert('❌ خطأ!');
+        }
     }
 
     async function showSettings() {
