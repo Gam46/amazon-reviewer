@@ -322,8 +322,10 @@ app.post('/api/products/bulk', (req, res) => {
                     asin: String(p.asin || '').trim(),
                     brand: String(p.brand || '').trim(),
                     category: String(p.category || '').trim(),
+                    imageUrl: String(p.imageUrl || '').trim(),
+                    description: String(p.description || '').trim(),
                     notes: String(p.notes || '').trim(),
-                    addedAt: new Date().toLocaleString('ar-EG')
+                    addedAt: new Date().toISOString()
                 });
                 success++;
             } else {
