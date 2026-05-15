@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const auth = require('./auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -94,6 +95,190 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', server: 'running', storage: 'JSON files (FAST!)' });
 });
 
+// ============= AUTH ROUTES =============
+
+// Login
+app.post('/api/auth/login', (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        if (!username || !password) {
+            return res.status(400).json({ success: false, error: 'Username and password required' });
+        }
+
+        const user = auth.validateUser(username, password);
+        if (!user) {
+            return res.status(401).json({ success: false, error: 'Invalid credentials' });
+        }
+
+        // Create token (simple JWT-like token)
+        const token = Buffer.from(JSON.stringify({ id: user.id, username: user.username })).toString('base64');
+        
+        res.json({ 
+            success: true, 
+            user: {
+                id: user.id,
+                username: user.username,
+                role: user.role,
+                permissions: user.permissions
+            },
+            token 
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Verify token
+app.post('/api/auth/verify', (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        
+        if (!token) {
+            return res.status(401).json({ success: false, error: 'No token' });
+        }
+
+        const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+        const user = auth.getUserById(decoded.id);
+        
+        if (!user) {
+            return res.status(401).json({ success: false, error: 'User not found' });
+        }
+
+        res.json({ 
+            success: true, 
+            user: {
+                id: user.id,
+                username: user.username,
+                role: user.role,
+                permissions: user.permissions
+            }
+        });
+    } catch (error) {
+        res.status(401).json({ success: false, error: 'Invalid token' });
+    }
+});
+
+// Get current user
+app.get('/api/auth/me', (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) return res.status(401).json({ success: false });
+
+        const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+        const user = auth.getUserById(decoded.id);
+        
+        if (!user) return res.status(401).json({ success: false });
+
+        res.json({ success: true, user: {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            permissions: user.permissions
+        }});
+    } catch {
+        res.status(401).json({ success: false });
+    }
+});
+
+// ============= USER MANAGEMENT (Admin only) =============
+
+// Get all users
+app.get('/api/admin/users', (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+        const user = auth.getUserById(decoded.id);
+
+        if (!user || user.role !== 'admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized' });
+        }
+
+        res.json({ success: true, users: auth.getAllUsers(), roles: auth.ROLES });
+    } catch {
+        res.status(500).json({ success: false });
+    }
+});
+
+// Add user
+app.post('/api/admin/users', (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+        const currentUser = auth.getUserById(decoded.id);
+
+        if (!currentUser || currentUser.role !== 'admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const { username, password, role } = req.body;
+        const newUser = auth.addUser(username, password, role);
+
+        if (!newUser) {
+            return res.status(400).json({ success: false, error: 'User already exists' });
+        }
+
+        res.json({ success: true, user: newUser });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Update user
+app.put('/api/admin/users/:userId', (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+        const currentUser = auth.getUserById(decoded.id);
+
+        if (!currentUser || currentUser.role !== 'admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const { userId } = req.params;
+        const { password, role } = req.body;
+        
+        const updates = {};
+        if (password) updates.password = password;
+        if (role) updates.role = role;
+
+        const updatedUser = auth.updateUser(parseInt(userId), updates);
+
+        if (!updatedUser) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        res.json({ success: true, user: updatedUser });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Delete user
+app.delete('/api/admin/users/:userId', (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+        const currentUser = auth.getUserById(decoded.id);
+
+        if (!currentUser || currentUser.role !== 'admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const { userId } = req.params;
+        const success = auth.deleteUser(parseInt(userId));
+
+        if (!success) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Get all products
 app.get('/api/products', (req, res) => {
     try {
@@ -153,6 +338,16 @@ app.post('/api/products/bulk', (req, res) => {
 // Add single product
 app.post('/api/products', (req, res) => {
     try {
+        const token = req.headers.authorization?.split(' ')[1];
+        let userId = null;
+        
+        if (token) {
+            try {
+                const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+                userId = decoded.id;
+            } catch {}
+        }
+
         if (!req.body.name || !req.body.link) {
             return res.status(400).json({ success: false, error: 'الاسم والرابط مطلوبان' });
         }
@@ -167,6 +362,7 @@ app.post('/api/products', (req, res) => {
             brand: req.body.brand || '',
             category: req.body.category || '',
             notes: req.body.notes || '',
+            addedBy: userId || null,
             addedAt: new Date().toLocaleString('ar-EG')
         };
 
@@ -183,54 +379,30 @@ app.post('/api/products', (req, res) => {
     }
 });
 
-// Save review
-app.post('/api/reviews/:productId', (req, res) => {
-    try {
-        const productId = req.params.productId;
-        const reviews = readReviews();
 
-        reviews[productId] = {
-            status: req.body.status,
-            purchasePrice: req.body.purchasePrice || null,
-            quantity: req.body.quantity || 0,
-            purchased: req.body.purchased || false,
-            notes: req.body.notes || '',
-            reviewedAt: new Date().toLocaleString('ar-EG')
-        };
 
-        if (saveReviews(reviews)) {
-            res.json({ success: true });
-        } else {
-            res.status(500).json({ success: false });
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ success: false });
-    }
-});
 
-// Update review
-app.put('/api/reviews/:productId', (req, res) => {
-    try {
-        const productId = req.params.productId;
-        const reviews = readReviews();
 
-        reviews[productId] = {
-            ...reviews[productId],
-            ...req.body,
-            reviewedAt: new Date().toLocaleString('ar-EG')
-        };
 
-        if (saveReviews(reviews)) {
-            res.json({ success: true });
-        } else {
-            res.status(500).json({ success: false });
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ success: false });
-    }
-});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Delete review
 app.delete('/api/reviews/:productId', (req, res) => {
