@@ -6,6 +6,19 @@ const os = require('os');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Helper function FIRST
+function getLocalIP() {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+        for (const iface of interfaces[name]) {
+            if (iface.family === 'IPv4' && !iface.internal) {
+                return iface.address;
+            }
+        }
+    }
+    return 'localhost';
+}
+
 // Data file paths
 const DATA_DIR = path.join(__dirname, 'data');
 const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
@@ -74,20 +87,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(publicPath, 'index.html'));
 });
 
-// Helper function
-function getLocalIP() {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-        for (const iface of interfaces[name]) {
-            if (iface.family === 'IPv4' && !iface.internal) {
-                return iface.address;
-            }
-        }
-    }
-    return 'localhost';
-}
-
-// API Routes
+// ============= API ROUTES =============
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -307,267 +307,6 @@ app.listen(PORT, '0.0.0.0', () => {
 ✅ Data saved in /data/ folder
 
 🚀 البرنامج سريع جداً الآن!
-
-⚠️  اضغط Ctrl+C لإيقاف السيرفر
-    `);
-});
-
-// Helper functions
-function getLocalIP() {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-        for (const iface of interfaces[name]) {
-            if (iface.family === 'IPv4' && !iface.internal) {
-                return iface.address;
-            }
-        }
-    }
-    return 'localhost';
-}
-
-// API Routes
-
-// Health check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', server: 'running' });
-});
-
-// Bulk upload products (FAST - insertMany)
-app.post('/api/products/bulk', async (req, res) => {
-    try {
-        console.log('📤 Bulk upload:', req.body.products?.length, 'products');
-        const products = req.body.products || [];
-
-        if (!Array.isArray(products) || products.length === 0) {
-            return res.status(400).json({ success: false, error: 'products array required' });
-        }
-
-        // تجهيز المنتجات للإدراج الجماعي
-        const productsToInsert = products
-            .filter(p => p.name && p.link)  // تصفية المنتجات الصحيحة فقط
-            .map((p, i) => ({
-                _id: new mongoose.Types.ObjectId(),
-                id: Date.now() + i,
-                link: String(p.link).trim(),
-                name: String(p.name).trim(),
-                price: String(p.price || '').trim(),
-                asin: String(p.asin || '').trim(),
-                brand: String(p.brand || '').trim(),
-                category: String(p.category || '').trim(),
-                notes: String(p.notes || '').trim(),
-                addedAt: new Date().toLocaleString('ar-EG')
-            }));
-
-        // إدراج جماعي سريع جداً!
-        if (productsToInsert.length > 0) {
-            await Product.insertMany(productsToInsert, { ordered: false });
-        }
-
-        const failed = products.length - productsToInsert.length;
-        console.log(`✓ Bulk complete: ${productsToInsert.length} success, ${failed} failed`);
-        
-        res.json({ 
-            success: true, 
-            success: productsToInsert.length, 
-            failed,
-            message: `تم إضافة ${productsToInsert.length} منتج بنجاح!`
-        });
-    } catch (error) {
-        console.error('❌ Bulk error:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Get all products
-app.get('/api/products', async (req, res) => {
-    try {
-        const products = await Product.find({});
-        const reviews = await Review.find({});
-        
-        const reviewsObj = {};
-        reviews.forEach(r => {
-            reviewsObj[r.productId] = {
-                status: r.status,
-                purchasePrice: r.purchasePrice,
-                quantity: r.quantity,
-                purchased: r.purchased,
-                notes: r.notes,
-                reviewedAt: r.reviewedAt
-            };
-        });
-
-        res.json({ products, reviews: reviewsObj });
-    } catch (error) {
-        console.error('Error:', error);
-        res.json({ products: [], reviews: {} });
-    }
-});
-
-// Add product
-app.post('/api/products', async (req, res) => {
-    try {
-        console.log('📤 طلب إضافة منتج:', req.body);
-        
-        if (!req.body.name || !req.body.link) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'الاسم والرابط مطلوبان' 
-            });
-        }
-
-        const product = new Product({
-            _id: new mongoose.Types.ObjectId(),
-            id: Date.now(),
-            link: req.body.link,
-            name: req.body.name,
-            price: req.body.price || '',
-            asin: req.body.asin || '',
-            brand: req.body.brand || '',
-            category: req.body.category || '',
-            notes: req.body.notes || '',
-            addedAt: new Date().toLocaleString('ar-EG')
-        });
-
-        const savedProduct = await product.save();
-        console.log('✅ تم حفظ المنتج:', savedProduct._id);
-        
-        res.json({ success: true, product: savedProduct });
-    } catch (error) {
-        console.error('❌ خطأ في إضافة المنتج:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: error.message || 'خطأ في الخادم' 
-        });
-    }
-});
-
-// Save review
-app.post('/api/reviews/:productId', async (req, res) => {
-    try {
-        const productId = parseInt(req.params.productId);
-        
-        await Review.findOneAndUpdate(
-            { productId },
-            {
-                productId,
-                status: req.body.status,
-                purchasePrice: req.body.purchasePrice || null,
-                quantity: req.body.quantity || 0,
-                purchased: req.body.purchased || false,
-                notes: req.body.notes || '',
-                reviewedAt: new Date().toLocaleString('ar-EG')
-            },
-            { upsert: true, new: true }
-        );
-
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ success: false });
-    }
-});
-
-// Update review
-app.put('/api/reviews/:productId', async (req, res) => {
-    try {
-        const productId = parseInt(req.params.productId);
-        
-        await Review.findOneAndUpdate(
-            { productId },
-            {
-                ...req.body,
-                reviewedAt: new Date().toLocaleString('ar-EG')
-            },
-            { upsert: true, new: true }
-        );
-
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ success: false });
-    }
-});
-
-// Delete review (reset)
-app.delete('/api/reviews/:productId', async (req, res) => {
-    try {
-        const productId = parseInt(req.params.productId);
-        await Review.deleteOne({ productId });
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ success: false });
-    }
-});
-
-// Delete product
-app.delete('/api/products/:productId', async (req, res) => {
-    try {
-        const productId = parseInt(req.params.productId);
-        
-        await Product.deleteOne({ id: productId });
-        await Review.deleteOne({ productId });
-        
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ success: false });
-    }
-});
-
-// Clear all data
-app.delete('/api/all', async (req, res) => {
-    try {
-        await Product.deleteMany({});
-        await Review.deleteMany({});
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ success: false });
-    }
-});
-
-// Health check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', server: 'running' });
-});
-
-// 404 handler
-app.use((req, res) => {
-    console.warn('⚠️ طلب غير معروف:', req.method, req.path);
-    res.status(404).json({ error: 'Not found' });
-});
-
-// Helper functions
-function getLocalIP() {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-        for (const iface of interfaces[name]) {
-            if (iface.family === 'IPv4' && !iface.internal) {
-                return iface.address;
-            }
-        }
-    }
-    return 'localhost';
-}
-
-// Start server
-const localIP = getLocalIP();
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`
-╔════════════════════════════════════════════════════════════╗
-║    📦 مراجع منتجات أمازون - متشغل بنجاح!         ║
-╚════════════════════════════════════════════════════════════╝
-
-🌐 الرابط المحلي:     http://localhost:${PORT}
-🌍 الرابط للمشتري:   http://${localIP}:${PORT}
-
-✅ Server Status: Running
-✅ MongoDB: ${mongoose.connection.readyState === 1 ? 'Connected ✓' : 'Connecting...'}
-✅ Static Files: /public/index.html
-✅ API Health: /api/health
-
-🔍 اختبر الموقع الآن!
 
 ⚠️  اضغط Ctrl+C لإيقاف السيرفر
     `);
