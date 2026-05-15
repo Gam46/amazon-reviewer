@@ -81,7 +81,7 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', server: 'running' });
 });
 
-// Bulk upload products
+// Bulk upload products (FAST - insertMany)
 app.post('/api/products/bulk', async (req, res) => {
     try {
         console.log('📤 Bulk upload:', req.body.products?.length, 'products');
@@ -91,41 +91,36 @@ app.post('/api/products/bulk', async (req, res) => {
             return res.status(400).json({ success: false, error: 'products array required' });
         }
 
-        let success = 0, failed = 0;
-        const errors = [];
+        // تجهيز المنتجات للإدراج الجماعي
+        const productsToInsert = products
+            .filter(p => p.name && p.link)  // تصفية المنتجات الصحيحة فقط
+            .map((p, i) => ({
+                _id: new mongoose.Types.ObjectId(),
+                id: Date.now() + i,
+                link: String(p.link).trim(),
+                name: String(p.name).trim(),
+                price: String(p.price || '').trim(),
+                asin: String(p.asin || '').trim(),
+                brand: String(p.brand || '').trim(),
+                category: String(p.category || '').trim(),
+                notes: String(p.notes || '').trim(),
+                addedAt: new Date().toLocaleString('ar-EG')
+            }));
 
-        for (let i = 0; i < products.length; i++) {
-            try {
-                const p = products[i];
-                if (!p.name || !p.link) {
-                    failed++;
-                    errors.push(`Row ${i + 1}: Missing data`);
-                    continue;
-                }
-
-                const product = new Product({
-                    _id: new mongoose.Types.ObjectId(),
-                    id: Date.now() + i,
-                    link: String(p.link).trim(),
-                    name: String(p.name).trim(),
-                    price: String(p.price || '').trim(),
-                    asin: String(p.asin || '').trim(),
-                    brand: String(p.brand || '').trim(),
-                    category: String(p.category || '').trim(),
-                    notes: String(p.notes || '').trim(),
-                    addedAt: new Date().toLocaleString('ar-EG')
-                });
-
-                await product.save();
-                success++;
-            } catch (err) {
-                failed++;
-                errors.push(`Row ${i + 1}: ${err.message}`);
-            }
+        // إدراج جماعي سريع جداً!
+        if (productsToInsert.length > 0) {
+            await Product.insertMany(productsToInsert, { ordered: false });
         }
 
-        console.log(`✓ Bulk complete: ${success} success, ${failed} failed`);
-        res.json({ success: true, success, failed, errors: errors.slice(0, 5) });
+        const failed = products.length - productsToInsert.length;
+        console.log(`✓ Bulk complete: ${productsToInsert.length} success, ${failed} failed`);
+        
+        res.json({ 
+            success: true, 
+            success: productsToInsert.length, 
+            failed,
+            message: `تم إضافة ${productsToInsert.length} منتج بنجاح!`
+        });
     } catch (error) {
         console.error('❌ Bulk error:', error);
         res.status(500).json({ success: false, error: error.message });
