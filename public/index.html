@@ -488,8 +488,15 @@
                     const row = data[i];
                     if (row[0] && row[1]) {
                         products.push({
-                            link: row[0], name: row[1], asin: row[2] || '',
-                            brand: row[3] || '', price: row[4] || '', category: row[5] || '', notes: row[6] || ''
+                            link: row[0],
+                            name: row[1],
+                            asin: row[2] || '',
+                            brand: row[3] || '',
+                            price: row[4] || '',
+                            category: row[5] || '',
+                            imageUrl: row[6] || '',
+                            description: row[7] || '',
+                            notes: row[8] || ''
                         });
                     }
                 }
