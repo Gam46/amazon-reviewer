@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>مراجع منتجات أمازون</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; -webkit-user-select: none; user-select: none; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 15px; }
+        input, textarea, select { -webkit-user-select: text; user-select: text; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { text-align: center; color: white; margin-bottom: 20px; }
+        h1 { font-size: 24px; margin-bottom: 5px; }
+        header p { font-size: 13px; opacity: 0.9; }
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); margin-bottom: 15px; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+        .tabs button { flex: 1; min-width: 100px; padding: 10px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; background: rgba(255, 255, 255, 0.2); color: white; transition: all 0.3s; }
+        .tabs button.active { background: white; color: #667eea; }
+        .mode { display: none; }
+        .mode.active { display: block; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 13px; }
+        .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-family: inherit; font-size: 14px; }
+        .input-group input:focus, .input-group textarea:focus, .input-group select:focus { outline: none; border-color: #667eea; }
+        .input-group textarea { resize: vertical; min-height: 70px; }
+        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        @media (max-width: 600px) { .input-row { grid-template-columns: 1fr; } }
+        button.primary { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: transform 0.2s; font-size: 14px; }
+        button.primary:active { transform: scale(0.98); }
+        .message { margin-top: 10px; padding: 10px; border-radius: 6px; font-size: 13px; }
+        .success { background: #e8f5e9; color: #4caf50; }
+        .error { background: #ffebee; color: #f44336; }
+        .product-item { border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-bottom: 12px; }
+        .product-name { font-weight: 600; color: #333; margin-bottom: 6px; font-size: 14px; }
+        .product-meta { font-size: 12px; color: #666; margin-bottom: 8px; line-height: 1.5; }
+        .product-link { display: inline-block; margin-bottom: 10px; padding: 8px 12px; background: #ff9800; color: white; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600; }
+        .status-buttons { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+        .status-btn { padding: 10px; border: 2px solid #e0e0e0; background: white; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 11px; transition: all 0.3s; }
+        .status-btn:active { transform: scale(0.95); }
+        .status-btn.available { border-color: #4caf50; color: #4caf50; }
+        .status-btn.available.selected { background: #4caf50; color: white; }
+        .status-btn.limited { border-color: #ff9800; color: #ff9800; }
+        .status-btn.limited.selected { background: #ff9800; color: white; }
+        .status-btn.unavailable { border-color: #f44336; color: #f44336; }
+        .status-btn.unavailable.selected { background: #f44336; color: white; }
+        .empty-state { text-align: center; padding: 30px; color: #999; }
+        .results-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 15px; }
+        .results-table th, .results-table td { padding: 10px; text-align: right; border-bottom: 1px solid #e0e0e0; }
+        .results-table th { background: #f5f5f5; font-weight: 600; color: #333; }
+        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .status-available { background: #e8f5e9; color: #4caf50; }
+        .status-limited { background: #fff3e0; color: #ff9800; }
+        .status-unavailable { background: #ffebee; color: #f44336; }
+        .action-menu { position: relative; display: inline-block; }
+        .action-btn { padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; }
+        .dropdown-menu { position: absolute; top: 100%; right: 0; background: white; border: 1px solid #e0e0e0; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 10; min-width: 140px; }
+        .dropdown-menu button { width: 100%; padding: 10px 12px; border: none; background: white; text-align: right; cursor: pointer; font-size: 12px; color: #333; }
+        .dropdown-menu button:hover { background: #f5f5f5; }
+        .dropdown-menu button.delete { color: #f44336; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        @media (max-width: 600px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
+        .stat-card { background: #f5f5f5; padding: 12px; border-radius: 8px; text-align: center; }
+        .stat-number { font-size: 20px; font-weight: 600; color: #667eea; }
+        .stat-label { font-size: 11px; color: #999; margin-top: 4px; }
+        .loading { text-align: center; color: #999; padding: 30px; }
+        .spinner { display: inline-block; width: 25px; height: 25px; border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .file-input-wrapper { position: relative; display: inline-block; width: 100%; }
+        .file-input-label { display: block; padding: 15px; background: #f5f5f5; border: 2px dashed #667eea; border-radius: 8px; text-align: center; cursor: pointer; font-size: 13px; color: #667eea; font-weight: 600; }
+        .file-input-label:hover { background: #f0f0ff; }
+        .file-input-wrapper input { display: none; }
+        .button-group { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .button-group button { flex: 1; min-width: 100px; }
+        .btn-secondary { background: #f5f5f5 !important; color: #333 !important; }
+        .progress-text { text-align: center; color: #667eea; font-weight: 600; margin-bottom: 15px; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📦 مراجع منتجات أمازون</h1>
+            <p>نسخة محسّنة احترافية</p>
+        </header>
+
+        <div class="tabs">
+            <button class="active" onclick="switchTab('add')">➕ إضافة منتج</button>
+            <button onclick="switchTab('review')">✓ مراجعة</button>
+            <button onclick="switchTab('results')">📊 النتائج</button>
+        </div>
+
+        <!-- TAB 1: ADD PRODUCT -->
+        <div id="add" class="mode active">
+            <div class="card">
+                <h2 style="margin-bottom: 15px; color: #333; font-size: 18px;">أضف منتج جديد</h2>
+                
+                <div style="background: #f0f4ff; border-left: 4px solid #667eea; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                    <p style="font-size: 13px; color: #667eea; font-weight: 600; margin-bottom: 8px;">💡 رفع منتجات من Excel:</p>
+                    <p style="font-size: 12px; color: #666; margin-bottom: 8px;">1. حمّل التيمبليت</p>
+                    <p style="font-size: 12px; color: #666; margin-bottom: 8px;">2. أملأ البيانات</p>
+                    <p style="font-size: 12px; color: #666;">3. ارفع الملف هنا</p>
+                    <button class="primary" onclick="downloadTemplate()" style="margin-top: 10px; font-size: 13px; padding: 10px;">📥 حمّل التيمبليت (Excel)</button>
+                </div>
+                
+                <div class="file-input-wrapper">
+                    <label class="file-input-label" for="excelFile">📁 أو رفع ملف Excel (اختياري)</label>
+                    <input type="file" id="excelFile" accept=".xlsx,.xls" onchange="handleExcelUpload(event)">
+                </div>
+
+                <div class="input-group">
+                    <label>رابط المنتج (أمازون)</label>
+                    <input type="text" id="productLink" placeholder="https://www.amazon.eg/...">
+                </div>
+
+                <div class="input-group">
+                    <label>اسم المنتج</label>
+                    <input type="text" id="productName" placeholder="مثال: كاميرا زجاجية">
+                </div>
+
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>ASIN</label>
+                        <input type="text" id="productASIN" placeholder="B0GFXSV2HD">
+                    </div>
+                    <div class="input-group">
+                        <label>البراند</label>
+                        <input type="text" id="productBrand" placeholder="مثال: Samsung">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>السعر على أمازون</label>
+                    <input type="text" id="productPrice" placeholder="مثال: 150 جنيه">
+                </div>
+
+                <div class="input-group">
+                    <label>القسم/الفئة</label>
+                    <select id="productCategory">
+                        <option value="">-- اختر القسم --</option>
+                        <option value="إلكترونيات">إلكترونيات</option>
+                        <option value="موضة">موضة وملابس</option>
+                        <option value="منزل">منزل وحديقة</option>
+                        <option value="صحة">صحة وجمال</option>
+                        <option value="رياضة">رياضة وألعاب</option>
+                        <option value="كتب">كتب وتعليم</option>
+                        <option value="أخرى">أخرى</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>ملاحظات (اختياري)</label>
+                    <textarea id="productNotes" placeholder="أي ملاحظات إضافية..."></textarea>
+                </div>
+
+                <button class="primary" onclick="addProduct()">➕ أضف المنتج</button>
+                <div id="addMessage"></div>
+            </div>
+        </div>
+
+        <!-- TAB 2: REVIEW -->
+        <div id="review" class="mode">
+            <div class="card" id="reviewCard">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>جاري تحميل البيانات...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: RESULTS -->
+        <div id="results" class="mode">
+            <div class="card">
+                <h2 style="margin-bottom: 15px; color: #333; font-size: 18px;">📊 النتائج والإحصائيات</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalProducts">0</div>
+                        <div class="stat-label">إجمالي المنتجات</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="reviewedCount">0</div>
+                        <div class="stat-label">تمت مراجعتها</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="purchasedCount">0</div>
+                        <div class="stat-label">تم شراؤها</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="pendingCount">0</div>
+                        <div class="stat-label">بانتظار</div>
+                    </div>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table class="results-table" id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>المنتج</th>
+                                <th>ASIN</th>
+                                <th>الحالة</th>
+                                <th>الشراء</th>
+                                <th>إجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="button-group" style="margin-top: 15px;">
+                    <button class="primary" onclick="downloadExcel()">📥 تحميل Excel</button>
+                    <button class="primary btn-secondary" onclick="downloadCSV()">📥 تحميل CSV</button>
+                    <button class="primary btn-secondary" onclick="clearAllData()">🗑️ حذف الكل</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allData = { products: [], reviews: {} };
+        let selectedStatus = null;
+
+        async function loadData() {
+            try {
+                const response = await fetch('/api/products');
+                allData = await response.json();
+            } catch (error) {
+                console.error('خطأ في تحميل البيانات:', error);
+            }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.mode').forEach(m => m.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+
+            document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (tab === 'review') {
+                loadData().then(() => displayReviewProduct());
+            }
+            if (tab === 'results') {
+                loadData().then(() => updateResults());
+            }
+        }
+
+        function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const workbook = XLSX.read(e.target.result, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet);
+
+                    let count = 0;
+                    for (const row of rows) {
+                        if (row['رابط'] || row['link']) {
+                            const product = {
+                                link: row['رابط'] || row['link'] || '',
+                                name: row['الاسم'] || row['name'] || '',
+                                price: row['السعر'] || row['price'] || '',
+                                asin: row['ASIN'] || '',
+                                brand: row['البراند'] || row['brand'] || '',
+                                category: row['القسم'] || row['category'] || '',
+                                notes: row['ملاحظات'] || row['notes'] || ''
+                            };
+
+                            const response = await fetch('/api/products', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(product)
+                            });
+
+                            if (response.ok) count++;
+                        }
+                    }
+
+                    showMessage('addMessage', `✓ تم رفع ${count} منتج بنجاح`, 'success');
+                    document.getElementById('excelFile').value = '';
+                    loadData();
+                } catch (error) {
+                    showMessage('addMessage', '❌ خطأ في قراءة الملف', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function downloadTemplate() {
+            const templateData = [
+                ['رابط', 'الاسم', 'ASIN', 'البراند', 'السعر', 'القسم', 'ملاحظات'],
+                ['https://www.amazon.eg/...', 'كاميرا زجاجية للموبايل', 'B0GFXSV2HD', 'Samsung', '150 جنيه', 'إلكترونيات', 'منتج جديد'],
+                ['https://www.amazon.eg/...', 'كيبل شحن سريع', 'B09HHGH3ZZ', 'Apple', '50 جنيه', 'إلكترونيات', ''],
+                ['https://www.amazon.eg/...', 'واقي شاشة', 'B0ABC123DE', 'Generic', '30 جنيه', 'إلكترونيات', ''],
+            ];
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(templateData);
+            
+            // تعديل عرض الأعمدة
+            ws['!cols'] = [
+                { wch: 30 }, // رابط
+                { wch: 20 }, // الاسم
+                { wch: 15 }, // ASIN
+                { wch: 15 }, // البراند
+                { wch: 15 }, // السعر
+                { wch: 15 }, // القسم
+                { wch: 20 }  // ملاحظات
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, 'منتجات');
+            XLSX.writeFile(wb, 'template_منتجات_أمازون.xlsx');
+        }
+
+        async function addProduct() {
+            const link = document.getElementById('productLink').value.trim();
+            const name = document.getElementById('productName').value.trim();
+
+            if (!link || !name) {
+                showMessage('addMessage', 'من فضلك أدخل الرابط والاسم على الأقل', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        link,
+                        name,
+                        price: document.getElementById('productPrice').value.trim(),
+                        asin: document.getElementById('productASIN').value.trim(),
+                        brand: document.getElementById('productBrand').value.trim(),
+                        category: document.getElementById('productCategory').value,
+                        notes: document.getElementById('productNotes').value.trim()
+                    })
+                });
+
+                if (response.ok) {
+                    showMessage('addMessage', `✓ تمت إضافة "${name}"`, 'success');
+                    clearAddForm();
+                    loadData();
+                }
+            } catch (error) {
+                showMessage('addMessage', '❌ خطأ في الاتصال بالخادم', 'error');
+            }
+        }
+
+        function clearAddForm() {
+            document.getElementById('productLink').value = '';
+            document.getElementById('productName').value = '';
+            document.getElementById('productPrice').value = '';
+            document.getElementById('productASIN').value = '';
+            document.getElementById('productBrand').value = '';
+            document.getElementById('productCategory').value = '';
+            document.getElementById('productNotes').value = '';
+        }
+
+        async function displayReviewProduct() {
+            const unreviewed = allData.products.filter(p => !allData.reviews[p.id]);
+
+            if (unreviewed.length === 0) {
+                document.getElementById('reviewCard').innerHTML = `<div class="empty-state">✓ تم مراجعة جميع المنتجات!</div>`;
+                return;
+            }
+
+            const product = unreviewed[0];
+            selectedStatus = null;
+
+            const reviewed = Object.keys(allData.reviews).length;
+            const progressText = `تم مراجعة ${reviewed} من ${allData.products.length}`;
+
+            document.getElementById('reviewCard').innerHTML = `
+                <div class="progress-text">${progressText}</div>
+                <div class="product-item">
+                    <a href="${product.link}" target="_blank" class="product-link">🔗 فتح على أمازون</a>
+                    
+                    <div class="product-name">${product.name}</div>
+                    <div class="product-meta">
+                        <strong>ASIN:</strong> ${product.asin || '-'} | <strong>البراند:</strong> ${product.brand || '-'}<br>
+                        <strong>السعر:</strong> ${product.price || '-'} | <strong>القسم:</strong> ${product.category || '-'}<br>
+                        ${product.notes ? `<strong>ملاحظات:</strong> ${product.notes}` : ''}
+                    </div>
+
+                    <p style="margin-bottom: 12px; font-weight: 600; color: #333; font-size: 13px;">هل المنتج متوفر؟</p>
+                    <div class="status-buttons">
+                        <button class="status-btn available" onclick="selectStatus('متوفر بكثرة')">✓ متوفر</button>
+                        <button class="status-btn limited" onclick="selectStatus('متوفر بقلة')">⚠️ محدود</button>
+                        <button class="status-btn unavailable" onclick="selectStatus('غير متوفر')">✗ غير متوفر</button>
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 13px;">سعر الشراء (اختياري)</label>
+                        <input type="number" id="reviewPrice" placeholder="السعر" step="0.01" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 13px;">كمية الشراء</label>
+                        <input type="number" id="reviewQuantity" placeholder="0" min="0" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #333; font-size: 13px; cursor: pointer;">
+                            <input type="checkbox" id="reviewPurchased">
+                            تم الشراء
+                        </label>
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 13px;">ملاحظات إضافية</label>
+                        <textarea id="reviewNotes" placeholder="أي ملاحظات..." style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; min-height: 70px; font-family: inherit; font-size: 14px;"></textarea>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="primary" onclick="saveReview('${product.id}')">✓ حفظ والتالي</button>
+                        <button class="primary btn-secondary" onclick="skipProduct()">⏭️ تخطي</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectStatus(status) {
+            selectedStatus = status;
+            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('selected'));
+            event.target.classList.add('selected');
+        }
+
+        async function saveReview(productId) {
+            if (!selectedStatus) {
+                alert('من فضلك اختر حالة المنتج');
+                return;
+            }
+
+            try {
+                await fetch(`/api/reviews/${productId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        status: selectedStatus,
+                        purchasePrice: document.getElementById('reviewPrice').value || null,
+                        quantity: parseInt(document.getElementById('reviewQuantity').value) || 0,
+                        purchased: document.getElementById('reviewPurchased').checked,
+                        notes: document.getElementById('reviewNotes').value
+                    })
+                });
+
+                await loadData();
+                displayReviewProduct();
+            } catch (error) {
+                console.error('خطأ:', error);
+            }
+        }
+
+        function skipProduct() {
+            loadData().then(() => displayReviewProduct());
+        }
+
+        async function updateResults() {
+            await loadData();
+
+            const reviewed = Object.keys(allData.reviews).length;
+            const pending = allData.products.length - reviewed;
+            const purchased = Object.values(allData.reviews).filter(r => r.purchased).length;
+
+            document.getElementById('totalProducts').textContent = allData.products.length;
+            document.getElementById('reviewedCount').textContent = reviewed;
+            document.getElementById('purchasedCount').textContent = purchased;
+            document.getElementById('pendingCount').textContent = pending;
+
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+
+            allData.products.forEach(product => {
+                const review = allData.reviews[product.id];
+                const statusEmoji = {
+                    'متوفر بكثرة': '✓ متوفر',
+                    'متوفر بقلة': '⚠️ محدود',
+                    'غير متوفر': '✗ غير متوفر'
+                };
+
+                const statusClass = {
+                    'متوفر بكثرة': 'status-available',
+                    'متوفر بقلة': 'status-limited',
+                    'غير متوفر': 'status-unavailable'
+                };
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis;">${product.name}</td>
+                    <td>${product.asin || '-'}</td>
+                    <td>${review ? `<span class="status-badge ${statusClass[review.status]}">${statusEmoji[review.status]}</span>` : '<span style="color: #ccc;">بانتظار</span>'}</td>
+                    <td>${review && review.purchased ? '✓ نعم' : '-'}</td>
+                    <td>
+                        <div class="action-menu">
+                            <button class="action-btn" onclick="toggleMenu(event)">⋮</button>
+                            <div class="dropdown-menu" style="display: none;">
+                                <button onclick="viewProduct('${product.link}')">🔗 فتح</button>
+                                <button onclick="reReviewProduct('${product.id}')">✏️ إعادة مراجعة</button>
+                                <button class="delete" onclick="deleteProduct('${product.id}')">🗑️ حذف</button>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function toggleMenu(event) {
+            const menu = event.target.nextElementSibling;
+            const allMenus = document.querySelectorAll('.dropdown-menu');
+            allMenus.forEach(m => {
+                if (m !== menu) m.style.display = 'none';
+            });
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+            event.stopPropagation();
+        }
+
+        function viewProduct(link) {
+            window.open(link, '_blank');
+        }
+
+        async function reReviewProduct(productId) {
+            await fetch(`/api/reviews/${productId}`, { method: 'DELETE' });
+            await loadData();
+            updateResults();
+        }
+
+        async function deleteProduct(productId) {
+            if (confirm('هل تريد حذف هذا المنتج؟')) {
+                await fetch(`/api/products/${productId}`, { method: 'DELETE' });
+                await loadData();
+                updateResults();
+            }
+        }
+
+        function downloadExcel() {
+            const ws_data = [['المنتج', 'ASIN', 'البراند', 'السعر', 'القسم', 'الحالة', 'سعر الشراء', 'الكمية', 'تم الشراء', 'الملاحظات']];
+
+            allData.products.forEach(product => {
+                const review = allData.reviews[product.id];
+                ws_data.push([
+                    product.name,
+                    product.asin || '',
+                    product.brand || '',
+                    product.price || '',
+                    product.category || '',
+                    review ? review.status : 'بانتظار',
+                    review?.purchasePrice || '',
+                    review?.quantity || '',
+                    review?.purchased ? 'نعم' : 'لا',
+                    review?.notes || ''
+                ]);
+            });
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            XLSX.utils.book_append_sheet(wb, ws, 'منتجات');
+            XLSX.writeFile(wb, `منتجات_أمازون_${new Date().toLocaleDateString('ar-EG')}.xlsx`);
+        }
+
+        function downloadCSV() {
+            let csv = 'المنتج,ASIN,البراند,السعر,القسم,الحالة,سعر الشراء,الكمية,تم الشراء,الملاحظات\n';
+
+            allData.products.forEach(product => {
+                const review = allData.reviews[product.id];
+                csv += `"${product.name}","${product.asin || ''}","${product.brand || ''}","${product.price || ''}","${product.category || ''}","${review ? review.status : 'بانتظار'}","${review?.purchasePrice || ''}","${review?.quantity || ''}","${review?.purchased ? 'نعم' : 'لا'}","${review?.notes || ''}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `منتجات_أمازون_${new Date().toLocaleDateString('ar-EG')}.csv`;
+            link.click();
+        }
+
+        async function clearAllData() {
+            if (confirm('هل تريد حذف جميع البيانات؟ هذا لا يمكن التراجع عنه!')) {
+                await fetch('/api/all', { method: 'DELETE' });
+                location.reload();
+            }
+        }
+
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `message ${type}`;
+        }
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+        });
+
+        loadData();
+    </script>
+</body>
+</html>
