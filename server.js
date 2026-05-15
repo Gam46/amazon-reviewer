@@ -20,8 +20,8 @@ function getLocalIP() {
     return 'localhost';
 }
 
-// Data file paths
-const DATA_DIR = path.join(__dirname, 'data');
+// Data file paths - استخدام /tmp للتخزين المؤقت أو /home/user للدائم
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), '.data');
 const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
 const REVIEWS_FILE = path.join(DATA_DIR, 'reviews.json');
 
@@ -56,6 +56,10 @@ function readReviews() {
 
 function saveProducts(products) {
     try {
+        // Ensure data directory exists
+        if (!fs.existsSync(DATA_DIR)) {
+            fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
         fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2), 'utf8');
         return true;
     } catch (e) {
@@ -66,6 +70,10 @@ function saveProducts(products) {
 
 function saveReviews(reviews) {
     try {
+        // Ensure data directory exists
+        if (!fs.existsSync(DATA_DIR)) {
+            fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
         fs.writeFileSync(REVIEWS_FILE, JSON.stringify(reviews, null, 2), 'utf8');
         return true;
     } catch (e) {
