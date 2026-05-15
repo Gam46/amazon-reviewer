@@ -383,25 +383,36 @@
         }
 
         try {
+            console.log('🔐 محاولة الدخول...', username);
+            
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             });
 
+            console.log('✓ Response status:', res.status);
+            
             const result = await res.json();
+            console.log('✓ Response:', result);
 
-            if (result.success) {
+            if (result.success && result.token) {
+                console.log('✓ تم الدخول بنجاح!');
                 token = result.token;
                 user = result.user;
                 localStorage.setItem('token', token);
                 localStorage.setItem('user', JSON.stringify(user));
-                showApp();
+                
+                err.textContent = ''; // مسح الخطأ
+                await showApp();  // انتظر حتى تنتهي showApp
+                console.log('✓ تم تحميل التطبيق!');
             } else {
-                err.textContent = 'بيانات غير صحيحة!';
+                console.error('❌ خطأ:', result.error);
+                err.textContent = result.error || 'بيانات غير صحيحة!';
             }
         } catch (error) {
-            err.textContent = 'خطأ في الاتصال!';
+            console.error('❌ خطأ في الاتصال:', error);
+            err.textContent = 'خطأ في الاتصال! ' + error.message;
         }
     }
 
