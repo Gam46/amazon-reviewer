@@ -412,6 +412,37 @@ app.post('/api/products', (req, res) => {
 
 
 
+// Save/Update review
+app.post('/api/reviews/:productId', (req, res) => {
+    try {
+        const productId = req.params.productId;
+        const { status, supplier, purchasePrice, quantity, purchased, notes } = req.body;
+        
+        const reviews = readReviews();
+        
+        reviews[productId] = {
+            id: productId,
+            status: status || '',
+            supplier: supplier || '',
+            purchasePrice: purchasePrice ? parseFloat(purchasePrice) : null,
+            quantity: quantity ? parseInt(quantity) : 0,
+            purchased: purchased || false,
+            notes: notes || '',
+            reviewedAt: new Date().toISOString(),
+            reviewedBy: req.user?.id || 'unknown'
+        };
+        
+        if (saveReviews(reviews)) {
+            res.json({ success: true, review: reviews[productId] });
+        } else {
+            res.status(500).json({ success: false, error: 'Failed to save review' });
+        }
+    } catch (error) {
+        console.error('❌ Error saving review:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Delete review
 app.delete('/api/reviews/:productId', (req, res) => {
     try {
