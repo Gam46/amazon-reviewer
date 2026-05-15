@@ -156,7 +156,8 @@
 
         <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
         <h3 style="color: #333; margin-bottom: 15px;">📊 رفع ملف Excel</h3>
-        <input type="file" id="excel-file" accept=".xlsx,.xls" onchange="uploadExcel()">
+        <button class="btn-small" style="background: #4caf50; margin-bottom: 15px;" onclick="downloadTemplate()">📥 تحميل قالب Excel</button>
+        <input type="file" id="excel-file" accept=".xlsx,.xls" onchange="uploadExcel()" style="display: block; margin-bottom: 10px;">
     </div>
 
     <!-- REVIEW -->
@@ -412,6 +413,31 @@
             msg.className = 'message msg-error';
             msg.classList.remove('hidden');
         }
+    }
+
+    function downloadTemplate() {
+        const templateData = [
+            ['الرابط', 'الاسم', 'ASIN', 'البراند', 'السعر', 'القسم', 'رابط الصورة', 'الوصف', 'ملاحظات'],
+            [
+                'https://www.amazon.eg/...',
+                'مثال: كاميرا راوينج',
+                'B0GFXSV2HD',
+                'Samsung',
+                '150 جنيه',
+                'إلكترونيات',
+                'https://m.media-amazon.com/images/...',
+                'وصف تفصيلي للمنتج يشرح المميزات',
+                'ملاحظات إضافية اختيارية'
+            ]
+        ];
+
+        const ws = XLSX.utils.aoa_to_sheet(templateData);
+        const colWidths = [40, 20, 15, 15, 15, 12, 40, 30, 20];
+        ws['!cols'] = colWidths.map(w => ({ wch: w }));
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'قالب المنتجات');
+        XLSX.writeFile(wb, 'قالب_منتجات_YAK_Store.xlsx');
     }
 
     async function uploadExcel() {
