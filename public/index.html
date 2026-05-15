@@ -421,7 +421,8 @@
         document.getElementById('role-display').textContent = roles[user.role] || user.role;
 
         buildTabs();
-        loadData();
+        await loadData();  // انتظر حتى تحميل البيانات
+        switchTab('review');  // اذهب لصفحة المراجعة
     }
 
     function hasPermission(perm) {
@@ -451,11 +452,23 @@
     }
 
     function switchTab(id) {
+        // إخفاء جميع المحتويات والأزرار
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        event.target.classList.add('active');
+        
+        // عرض المحتوى المختار
+        const content = document.getElementById(id);
+        if (content) content.classList.add('active');
+        
+        // تظليل الزر المختار
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            if (b.textContent.includes('إضافة') && id === 'add') b.classList.add('active');
+            else if (b.textContent.includes('مراجعة') && id === 'review') b.classList.add('active');
+            else if (b.textContent.includes('النتائج') && id === 'results') b.classList.add('active');
+            else if (b.textContent.includes('الإعدادات') && id === 'settings') b.classList.add('active');
+        });
 
+        // عرض المحتوى
         if (id === 'review') showReview();
         if (id === 'results') showResults();
         if (id === 'settings') showSettings();
