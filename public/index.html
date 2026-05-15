@@ -2,670 +2,640 @@
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YAK Store - مراجع منتجات أمازون</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { font-family: 'Segoe UI', Tahoma, Geneva, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
         input, textarea, select { -webkit-user-select: text; user-select: text; }
         
-        /* Login */
-        .login-screen { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; z-index: 9999; }
-        .login-screen.active { display: flex; }
-        .login-card { background: white; border-radius: 15px; padding: 40px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-width: 400px; width: 100%; }
-        .login-title { text-align: center; font-size: 24px; color: #333; margin-bottom: 30px; font-weight: 700; }
-        .login-input { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; margin-bottom: 15px; }
-        .login-input:focus { outline: none; border-color: #667eea; }
-        .login-btn { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
-        .login-error { color: #f44336; font-size: 12px; margin-bottom: 10px; text-align: center; }
+        .login-container { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .login-card { background: white; border-radius: 15px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px; width: 100%; }
+        .login-title { text-align: center; font-size: 28px; color: #333; margin-bottom: 30px; font-weight: 700; }
+        .input-field { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; margin-bottom: 15px; }
+        .input-field:focus { outline: none; border-color: #667eea; }
+        .login-btn { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 16px; }
+        .error-msg { color: #f44336; text-align: center; margin-bottom: 15px; font-size: 14px; }
 
-        #mainApp { padding: 15px; }
-        .container { max-width: 900px; margin: 0 auto; }
-        header { text-align: center; color: white; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        h1 { font-size: 24px; }
-        .user-info { font-size: 12px; background: rgba(255, 255, 255, 0.2); padding: 8px 12px; border-radius: 6px; }
-        .logout-btn { background: rgba(255, 255, 255, 0.2); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
-        
-        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); margin-bottom: 15px; }
-        .tabs { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
-        .tabs button { flex: 1; min-width: 100px; padding: 10px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; background: rgba(255, 255, 255, 0.2); color: white; }
-        .tabs button.active { background: white; color: #667eea; }
-        .mode { display: none; }
-        .mode.active { display: block; }
-        .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 13px; }
-        .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font: inherit; font-size: 14px; }
-        .input-group input:focus { outline: none; border-color: #667eea; }
-        button.primary { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; margin-bottom: 10px; }
-        .message { margin-top: 10px; padding: 10px; border-radius: 6px; font-size: 13px; }
-        .success { background: #e8f5e9; color: #4caf50; }
-        .error { background: #ffebee; color: #f44336; }
-        .results-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 15px; }
-        .results-table th, .results-table td { padding: 10px; text-align: right; border-bottom: 1px solid #e0e0e0; }
-        .results-table th { background: #f5f5f5; font-weight: 600; }
+        #app { display: none; }
+        .app-header { background: rgba(255,255,255,0.95); padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .header-title h1 { font-size: 26px; color: #333; margin-bottom: 5px; }
+        .header-title p { color: #999; font-size: 14px; }
+        .user-section { text-align: right; }
+        .user-info { color: #666; font-size: 13px; margin-bottom: 8px; }
+        .logout-btn { background: #f44336; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+
+        .tabs { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
+        .tab-btn { padding: 10px 20px; background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; }
+        .tab-btn.active { background: white; color: #667eea; }
+
+        .content-card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        h2 { font-size: 22px; color: #333; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: 600; color: #333; margin-bottom: 6px; font-size: 13px; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #667eea; }
+        .form-group textarea { min-height: 80px; resize: vertical; }
+
+        .btn-primary { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 10px; font-size: 14px; }
+        .btn-secondary { background: #999; }
+        .btn-small { display: inline-block; padding: 6px 12px; margin-right: 8px; margin-bottom: 8px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .btn-small.danger { background: #f44336; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; }
+        .stat-num { font-size: 28px; font-weight: 700; }
+        .stat-label { font-size: 12px; margin-top: 8px; opacity: 0.9; }
+
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
+        th { background: #f5f5f5; font-weight: 600; color: #333; }
+        tr:hover { background: #f9f9f9; }
+
         .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .status-yes { background: #e8f5e9; color: #4caf50; }
+        .status-no { background: #f0f0f0; color: #666; }
         .status-available { background: #e8f5e9; color: #4caf50; }
         .status-limited { background: #fff3e0; color: #ff9800; }
         .status-unavailable { background: #ffebee; color: #f44336; }
-        .action-menu { position: relative; display: inline-block; }
-        .action-btn { padding: 6px 10px; background: #e0e0e0; border: none; border-radius: 4px; cursor: pointer; }
-        .dropdown-menu { position: absolute; right: 0; top: 100%; background: white; border: 1px solid #e0e0e0; border-radius: 6px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); z-index: 100; min-width: 150px; }
-        .dropdown-menu button { display: block; width: 100%; padding: 10px; text-align: right; border: none; background: none; cursor: pointer; font-size: 12px; }
-        .dropdown-menu button:hover { background: #f5f5f5; }
-        .dropdown-menu button.delete { color: #f44336; }
 
-        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; }
-        .stat-number { font-size: 24px; font-weight: 700; }
-        .stat-label { font-size: 12px; margin-top: 5px; }
+        .message { padding: 12px; border-radius: 6px; margin-top: 10px; font-size: 13px; }
+        .msg-success { background: #e8f5e9; color: #4caf50; }
+        .msg-error { background: #ffebee; color: #f44336; }
 
         .hidden { display: none !important; }
-        .user-row { display: flex; gap: 10px; padding: 10px; background: #f9f9f9; border-radius: 6px; margin-bottom: 10px; align-items: center; }
-        .user-row-info { flex: 1; }
-        .user-username { font-weight: 600; color: #333; }
-        .user-role { font-size: 12px; color: #666; }
-        .user-actions { display: flex; gap: 5px; }
-        .user-actions button { padding: 6px 10px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; }
-        .edit-btn { background: #2196F3; color: white; }
-        .delete-btn { background: #f44336; color: white; }
-        .settings-section { margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px; }
-        .settings-title { font-size: 16px; font-weight: 700; color: #333; margin-bottom: 15px; }
     </style>
 </head>
 <body>
-    <!-- Login -->
-    <div id="loginScreen" class="login-screen active">
-        <div class="login-card">
-            <div class="login-title">🏪 YAK Store - تسجيل الدخول</div>
-            <div id="loginError" class="login-error"></div>
-            <input type="text" id="loginUsername" class="login-input" placeholder="اسم المستخدم">
-            <input type="password" id="loginPassword" class="login-input" placeholder="كلمة المرور">
-            <button class="login-btn" onclick="login()">دخول</button>
-        </div>
+
+<!-- LOGIN -->
+<div id="login" class="login-container">
+    <div class="login-card">
+        <div class="login-title">🏪 YAK Store</div>
+        <div style="text-align: center; color: #999; margin-bottom: 25px;">تسجيل الدخول</div>
+        <div id="loginError" class="error-msg"></div>
+        <input type="text" id="username" class="input-field" placeholder="اسم المستخدم" autocomplete="off">
+        <input type="password" id="password" class="input-field" placeholder="كلمة المرور" autocomplete="off">
+        <button class="login-btn" onclick="login()">دخول</button>
     </div>
+</div>
 
-    <!-- Main App -->
-    <div id="mainApp" class="hidden">
-        <div class="container">
-            <header>
-                <div>
-                    <h1>🏪 YAK Store - مراجع منتجات أمازون</h1>
-                    <p style="color: rgba(255,255,255,0.8);">نظام احترافي للمراجعة والتقارير</p>
-                </div>
-                <div style="text-align: left;">
-                    <div class="user-info">👤 <span id="currentUser"></span></div>
-                    <div class="user-info">🔑 <span id="currentRole"></span></div>
-                    <button class="logout-btn" onclick="logout()" style="margin-top: 5px;">تسجيل خروج</button>
-                </div>
-            </header>
-
-            <div class="card">
-                <div class="tabs" id="tabsContainer"></div>
-
-                <!-- Modes -->
-                <div id="add" class="mode active"></div>
-                <div id="review" class="mode"></div>
-                <div id="results" class="mode"></div>
-                <div id="settings" class="mode"></div>
+<!-- APP -->
+<div id="app">
+    <div class="app-header">
+        <div class="header-top">
+            <div class="header-title">
+                <h1>🏪 YAK Store - مراجع منتجات أمازون</h1>
+                <p>نظام احترافي للمراجعة والتقارير</p>
+            </div>
+            <div class="user-section">
+                <div class="user-info">👤 <span id="username-display"></span></div>
+                <div class="user-info">🔑 <span id="role-display"></span></div>
+                <button class="logout-btn" onclick="logout()">تسجيل خروج</button>
             </div>
         </div>
+        <div class="tabs" id="tabs-container"></div>
     </div>
 
-    <script>
-        let currentUser = null;
-        let currentToken = null;
-        let allData = { products: [], reviews: {} };
-        let selectedStatus = null;
+    <!-- ADD PRODUCT -->
+    <div id="add" class="tab-content content-card">
+        <h2>➕ إضافة منتج جديد</h2>
+        <div class="form-group">
+            <label>رابط المنتج (مطلوب)</label>
+            <input type="text" id="link" placeholder="https://www.amazon.eg/...">
+        </div>
+        <div class="form-group">
+            <label>اسم المنتج (مطلوب)</label>
+            <input type="text" id="name" placeholder="اسم المنتج">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+                <label>ASIN</label>
+                <input type="text" id="asin" placeholder="ASIN">
+            </div>
+            <div class="form-group">
+                <label>البراند</label>
+                <input type="text" id="brand" placeholder="البراند">
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+                <label>السعر</label>
+                <input type="text" id="price" placeholder="السعر">
+            </div>
+            <div class="form-group">
+                <label>القسم</label>
+                <select id="category">
+                    <option value="">-- اختر --</option>
+                    <option value="إلكترونيات">إلكترونيات</option>
+                    <option value="ملابس">ملابس</option>
+                    <option value="منزل">منزل</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>ملاحظات</label>
+            <textarea id="notes" placeholder="ملاحظات..."></textarea>
+        </div>
+        <button class="btn-primary" onclick="addProduct()">✓ أضف المنتج</button>
+        <div id="add-msg" class="message hidden"></div>
 
-        const PERMISSIONS = {
-            'add_products': 'إضافة منتج',
-            'review_products': 'مراجعة',
-            'view_reports': 'النتائج',
-            'manage_users': 'الإعدادات'
-        };
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
+        <h3 style="color: #333; margin-bottom: 15px;">📊 رفع ملف Excel</h3>
+        <input type="file" id="excel-file" accept=".xlsx,.xls" onchange="uploadExcel()">
+    </div>
 
-        async function login() {
-            const username = document.getElementById('loginUsername').value;
-            const password = document.getElementById('loginPassword').value;
-            const errorDiv = document.getElementById('loginError');
+    <!-- REVIEW -->
+    <div id="review" class="tab-content content-card">
+        <h2>✓ مراجعة المنتجات</h2>
+        <div id="review-content"></div>
+    </div>
 
-            if (!username || !password) {
-                errorDiv.textContent = 'الرجاء إدخال البيانات';
-                return;
-            }
+    <!-- RESULTS -->
+    <div id="results" class="tab-content content-card">
+        <h2>📊 النتائج والإحصائيات</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-num" id="total">0</div>
+                <div class="stat-label">إجمالي</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" id="reviewed">0</div>
+                <div class="stat-label">مراجع</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" id="purchased">0</div>
+                <div class="stat-label">مشتري</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" id="pending">0</div>
+                <div class="stat-label">بانتظار</div>
+            </div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>المنتج</th>
+                    <th>التاريخ</th>
+                    <th>الحالة</th>
+                    <th>المورد</th>
+                    <th>الشراء</th>
+                </tr>
+            </thead>
+            <tbody id="results-table"></tbody>
+        </table>
+        <button class="btn-small" onclick="downloadExcel()">📥 Excel</button>
+        <button class="btn-small" onclick="downloadCSV()">📥 CSV</button>
+    </div>
 
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
+    <!-- SETTINGS -->
+    <div id="settings" class="tab-content content-card">
+        <h2>⚙️ إدارة المستخدمين</h2>
+        <div id="users-list"></div>
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;">
+        <h3 style="color: #333; margin-bottom: 15px;">➕ إضافة مستخدم</h3>
+        <input type="text" id="new-username" placeholder="الاسم" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+        <input type="password" id="new-password" placeholder="كلمة المرور" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+        <select id="new-role" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+            <option value="reviewer">مراجع</option>
+            <option value="editor">محرر</option>
+            <option value="admin">مسؤول</option>
+        </select>
+        <button class="btn-primary" onclick="createUser()">إضافة مستخدم</button>
+    </div>
+</div>
 
-                const result = await response.json();
+<script>
+    let token = null;
+    let user = null;
+    let data = { products: [], reviews: {} };
+    let selectedStatus = null;
 
-                if (result.success) {
-                    currentUser = result.user;
-                    currentToken = result.token;
-                    localStorage.setItem('token', currentToken);
-                    localStorage.setItem('user', JSON.stringify(currentUser));
-                    showApp();
-                } else {
-                    errorDiv.textContent = 'بيانات الدخول غير صحيحة!';
-                }
-            } catch (error) {
-                errorDiv.textContent = 'خطأ في الاتصال!';
-            }
+    async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const err = document.getElementById('loginError');
+
+        if (!username || !password) {
+            err.textContent = 'الرجاء إدخال البيانات';
+            return;
         }
 
-        function logout() {
-            currentUser = null;
-            currentToken = null;
-            localStorage.clear();
-            location.reload();
-        }
-
-        function showApp() {
-            document.getElementById('loginScreen').classList.remove('active');
-            document.getElementById('mainApp').classList.remove('hidden');
-            initUI();
-        }
-
-        function hasPermission(perm) {
-            return currentUser?.permissions?.includes(perm);
-        }
-
-        function initUI() {
-            // Update user info
-            document.getElementById('currentUser').textContent = currentUser.username;
-            const roleMap = { 'admin': 'مسؤول', 'editor': 'محرر', 'reviewer': 'مراجع' };
-            document.getElementById('currentRole').textContent = roleMap[currentUser.role] || currentUser.role;
-
-            // Create tabs
-            const tabsContainer = document.getElementById('tabsContainer');
-            tabsContainer.innerHTML = '';
-            
-            const tabs = [
-                { id: 'add', label: '➕ إضافة', perm: 'add_products' },
-                { id: 'review', label: '✓ مراجعة', perm: 'review_products' },
-                { id: 'results', label: '📊 النتائج', perm: 'view_reports' },
-                { id: 'settings', label: '⚙️ الإعدادات', perm: 'manage_users' }
-            ];
-
-            tabs.forEach(tab => {
-                if (hasPermission(tab.perm)) {
-                    const btn = document.createElement('button');
-                    btn.className = 'tab-btn';
-                    if (tab.id === 'add') btn.classList.add('active');
-                    btn.textContent = tab.label;
-                    btn.onclick = () => switchTab(tab.id);
-                    tabsContainer.appendChild(btn);
-                }
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
             });
 
-            // Load content
-            loadAddForm();
-            loadReview();
-            loadResults();
-            loadSettings();
-        }
+            const result = await res.json();
 
-        function switchTab(tabId) {
-            document.querySelectorAll('.mode').forEach(m => m.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            event.target.classList.add('active');
-        }
-
-        function loadAddForm() {
-            document.getElementById('add').innerHTML = `
-                <h2 style="margin-bottom: 15px; color: #333;">إضافة منتج جديد</h2>
-                <div class="input-group">
-                    <label>رابط المنتج (مطلوب)</label>
-                    <input type="text" id="productLink" placeholder="https://www.amazon.eg/...">
-                </div>
-                <div class="input-group">
-                    <label>اسم المنتج (مطلوب)</label>
-                    <input type="text" id="productName" placeholder="اسم المنتج">
-                </div>
-                <div class="input-group">
-                    <label>ASIN</label>
-                    <input type="text" id="productASIN">
-                </div>
-                <div class="input-group">
-                    <label>البراند</label>
-                    <input type="text" id="productBrand">
-                </div>
-                <div class="input-group">
-                    <label>السعر</label>
-                    <input type="text" id="productPrice">
-                </div>
-                <div class="input-group">
-                    <label>القسم</label>
-                    <select id="productCategory">
-                        <option value="">-- اختر --</option>
-                        <option value="إلكترونيات">إلكترونيات</option>
-                        <option value="ملابس">ملابس</option>
-                        <option value="منزل">منزل</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label>ملاحظات</label>
-                    <textarea id="productNotes"></textarea>
-                </div>
-                <button class="primary" onclick="addProduct()">✓ أضف المنتج</button>
-                <div id="addMsg" class="message"></div>
-                <hr style="margin: 20px 0;">
-                <h3 style="color: #333;">📊 رفع ملف Excel</h3>
-                <input type="file" id="excelFile" accept=".xlsx,.xls" onchange="handleExcelUpload(event)">
-                <div id="excelMsg" class="message"></div>
-            `;
-        }
-
-        async function addProduct() {
-            const link = document.getElementById('productLink').value;
-            const name = document.getElementById('productName').value;
-
-            if (!link || !name) {
-                alert('الرابط والاسم مطلوبان!');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/products', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentToken}`
-                    },
-                    body: JSON.stringify({
-                        link,
-                        name,
-                        price: document.getElementById('productPrice').value,
-                        asin: document.getElementById('productASIN').value,
-                        brand: document.getElementById('productBrand').value,
-                        category: document.getElementById('productCategory').value,
-                        notes: document.getElementById('productNotes').value
-                    })
-                });
-
-                if (response.ok) {
-                    showMsg('addMsg', '✓ تم الإضافة!', true);
-                    document.getElementById('productLink').value = '';
-                    document.getElementById('productName').value = '';
-                    loadReview();
-                } else {
-                    showMsg('addMsg', '❌ خطأ!', false);
-                }
-            } catch (error) {
-                showMsg('addMsg', '❌ خطأ!', false);
-            }
-        }
-
-        async function handleExcelUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const wb = XLSX.read(e.target.result, { type: 'array' });
-                    const ws = wb.Sheets[wb.SheetNames[0]];
-                    const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-
-                    const products = [];
-                    for (let i = 1; i < data.length; i++) {
-                        const row = data[i];
-                        if (row[0] && row[1]) {
-                            products.push({
-                                link: row[0],
-                                name: row[1],
-                                asin: row[2] || '',
-                                brand: row[3] || '',
-                                price: row[4] || '',
-                                category: row[5] || '',
-                                notes: row[6] || ''
-                            });
-                        }
-                    }
-
-                    const response = await fetch('/api/products/bulk', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${currentToken}`
-                        },
-                        body: JSON.stringify({ products })
-                    });
-
-                    const result = await response.json();
-                    showMsg('excelMsg', `✓ تم رفع ${result.success} منتج!`, true);
-                    loadReview();
-                } catch (error) {
-                    showMsg('excelMsg', '❌ خطأ!', false);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function loadReview() {
-            const html = `<h2 style="margin-bottom: 15px; color: #333;">✓ مراجعة المنتجات</h2><div id="reviewContent"></div>`;
-            document.getElementById('review').innerHTML = html;
-            displayReviewProduct();
-        }
-
-        async function displayReviewProduct() {
-            await fetch('/api/products', { headers: { 'Authorization': `Bearer ${currentToken}` } })
-                .then(r => r.json())
-                .then(data => {
-                    allData = data;
-                    const pending = data.products.find(p => !data.reviews[p.id]);
-                    
-                    if (!pending) {
-                        document.getElementById('reviewContent').innerHTML = '<p style="color: #999; text-align: center; padding: 30px;">✓ تمت مراجعة جميع المنتجات!</p>';
-                        return;
-                    }
-
-                    const html = `
-                        <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                            <strong>${pending.name}</strong><br>
-                            <small>${pending.brand || '-'} | ${pending.price || '-'}</small>
-                        </div>
-                        <a href="${pending.link}" target="_blank" style="display: inline-block; margin-bottom: 15px; padding: 10px 15px; background: #ff9800; color: white; text-decoration: none; border-radius: 6px;">🔗 فتح</a>
-                        
-                        <div style="margin-bottom: 12px;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">الحالة:</label>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-                                <button onclick="selectStatus('متوفر بكثرة')" style="padding: 10px; border: 2px solid #4caf50; background: white; border-radius: 6px; cursor: pointer; font-weight: 600;">✓ متوفر</button>
-                                <button onclick="selectStatus('متوفر بقلة')" style="padding: 10px; border: 2px solid #ff9800; background: white; border-radius: 6px; cursor: pointer; font-weight: 600;">⚠️ محدود</button>
-                                <button onclick="selectStatus('غير متوفر')" style="padding: 10px; border: 2px solid #f44336; background: white; border-radius: 6px; cursor: pointer; font-weight: 600;">✗ غير متوفر</button>
-                            </div>
-                        </div>
-
-                        <div class="input-group">
-                            <label>اسم المورد</label>
-                            <input type="text" id="reviewSupplier" placeholder="أمازون مصر...">
-                        </div>
-                        <div class="input-group">
-                            <label>سعر الشراء</label>
-                            <input type="number" id="reviewPrice" placeholder="0" step="0.01">
-                        </div>
-                        <div class="input-group">
-                            <label>الكمية</label>
-                            <input type="number" id="reviewQuantity" placeholder="0" min="0">
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                <input type="checkbox" id="reviewPurchased">
-                                تم الشراء
-                            </label>
-                        </div>
-                        <div class="input-group">
-                            <label>ملاحظات</label>
-                            <textarea id="reviewNotes"></textarea>
-                        </div>
-
-                        <button class="primary" onclick="saveReview('${pending.id}')" style="margin-bottom: 5px;">✓ حفظ والتالي</button>
-                        <button class="primary" style="background: #999;" onclick="displayReviewProduct()">⏭️ تخطي</button>
-                    `;
-                    document.getElementById('reviewContent').innerHTML = html;
-                });
-        }
-
-        function selectStatus(status) {
-            selectedStatus = status;
-        }
-
-        async function saveReview(productId) {
-            if (!selectedStatus) {
-                alert('اختر الحالة!');
-                return;
-            }
-
-            try {
-                await fetch(`/api/reviews/${productId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentToken}`
-                    },
-                    body: JSON.stringify({
-                        status: selectedStatus,
-                        supplier: document.getElementById('reviewSupplier').value,
-                        purchasePrice: document.getElementById('reviewPrice').value || null,
-                        quantity: parseInt(document.getElementById('reviewQuantity').value) || 0,
-                        purchased: document.getElementById('reviewPurchased').checked,
-                        notes: document.getElementById('reviewNotes').value
-                    })
-                });
-
-                selectedStatus = null;
-                displayReviewProduct();
-            } catch (error) {
-                console.error(error);
-            }
-        }
-
-        function loadResults() {
-            document.getElementById('results').innerHTML = `
-                <h2 style="margin-bottom: 15px; color: #333;">📊 التقارير والإحصائيات</h2>
-                <div class="stat-grid">
-                    <div class="stat-card"><div class="stat-number" id="totalProducts">0</div><div class="stat-label">إجمالي</div></div>
-                    <div class="stat-card"><div class="stat-number" id="reviewedCount">0</div><div class="stat-label">مراجع</div></div>
-                    <div class="stat-card"><div class="stat-number" id="purchasedCount">0</div><div class="stat-label">مشتري</div></div>
-                    <div class="stat-card"><div class="stat-number" id="pendingCount">0</div><div class="stat-label">بانتظار</div></div>
-                </div>
-                <div style="overflow-x: auto;">
-                    <table class="results-table">
-                        <thead>
-                            <tr>
-                                <th>المنتج</th>
-                                <th>أضيف بواسطة</th>
-                                <th>التاريخ</th>
-                                <th>الحالة</th>
-                                <th>المورد</th>
-                                <th>الشراء</th>
-                            </tr>
-                        </thead>
-                        <tbody id="resultsBody"></tbody>
-                    </table>
-                </div>
-                <button class="primary" onclick="downloadExcel()" style="background: #4caf50;">📥 Excel</button>
-                <button class="primary" onclick="downloadCSV()" style="background: #2196F3; margin-right: 10px;">📥 CSV</button>
-            `;
-            updateResults();
-        }
-
-        async function updateResults() {
-            const reviewed = Object.keys(allData.reviews).length;
-            const purchased = Object.values(allData.reviews).filter(r => r.purchased).length;
-
-            document.getElementById('totalProducts').textContent = allData.products.length;
-            document.getElementById('reviewedCount').textContent = reviewed;
-            document.getElementById('purchasedCount').textContent = purchased;
-            document.getElementById('pendingCount').textContent = allData.products.length - reviewed;
-
-            const tbody = document.getElementById('resultsBody');
-            tbody.innerHTML = '';
-
-            allData.products.forEach(product => {
-                const review = allData.reviews[product.id];
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${product.name}</td>
-                    <td style="font-size: 11px;">${product.addedAt ? product.addedAt.split(' ')[0] : '-'}</td>
-                    <td style="font-size: 11px;">${review?.reviewedAt ? review.reviewedAt.split(' ')[0] : '-'}</td>
-                    <td>${review ? `<span class="status-badge status-${review.status === 'متوفر بكثرة' ? 'available' : review.status === 'متوفر بقلة' ? 'limited' : 'unavailable'}">${review.status}</span>` : '-'}</td>
-                    <td style="font-size: 11px;">${review?.supplier || '-'}</td>
-                    <td>${review?.purchased ? '✓' : '-'}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        function downloadExcel() {
-            const data = [['المنتج', 'التاريخ', 'الحالة', 'المورد', 'الشراء']];
-            allData.products.forEach(p => {
-                const r = allData.reviews[p.id];
-                data.push([p.name, p.addedAt || '', r?.status || '', r?.supplier || '', r?.purchased ? 'نعم' : 'لا']);
-            });
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws);
-            XLSX.writeFile(wb, 'منتجات.xlsx');
-        }
-
-        function downloadCSV() {
-            let csv = 'المنتج,التاريخ,الحالة,المورد,الشراء\n';
-            allData.products.forEach(p => {
-                const r = allData.reviews[p.id];
-                csv += `"${p.name}","${p.addedAt || ''}","${r?.status || ''}","${r?.supplier || ''}","${r?.purchased ? 'نعم' : 'لا'}"\n`;
-            });
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'منتجات.csv';
-            link.click();
-        }
-
-        async function loadSettings() {
-            if (!hasPermission('manage_users')) {
-                document.getElementById('settings').innerHTML = '<p style="color: #f44336;">ليس لديك صلاحية!</p>';
-                return;
-            }
-
-            document.getElementById('settings').innerHTML = `
-                <h2 style="margin-bottom: 15px; color: #333;">⚙️ إدارة المستخدمين</h2>
-                <div id="usersContainer"></div>
-                <div class="settings-section">
-                    <h3>➕ إضافة مستخدم</h3>
-                    <input type="text" id="newUsername" placeholder="الاسم" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
-                    <input type="password" id="newPassword" placeholder="كلمة المرور" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
-                    <select id="newRole" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
-                        <option value="reviewer">مراجع</option>
-                        <option value="editor">محرر</option>
-                        <option value="admin">مسؤول</option>
-                    </select>
-                    <button class="primary" onclick="createUser()">إضافة</button>
-                </div>
-            `;
-
-            try {
-                const response = await fetch('/api/admin/users', {
-                    headers: { 'Authorization': `Bearer ${currentToken}` }
-                });
-                const data = await response.json();
-                const users = data.users || [];
-
-                const html = users.map(u => `
-                    <div class="user-row">
-                        <div class="user-row-info">
-                            <div class="user-username">${u.username}</div>
-                            <div class="user-role">${u.role}</div>
-                        </div>
-                        <div class="user-actions">
-                            <button class="edit-btn" onclick="editUser(${u.id})">تعديل</button>
-                            <button class="delete-btn" onclick="deleteUser(${u.id})">حذف</button>
-                        </div>
-                    </div>
-                `).join('');
-
-                document.getElementById('usersContainer').innerHTML = `
-                    <div class="settings-section">
-                        <h3>المستخدمون</h3>
-                        ${html}
-                    </div>
-                `;
-            } catch (error) {
-                console.error(error);
-            }
-        }
-
-        async function createUser() {
-            const username = document.getElementById('newUsername').value;
-            const password = document.getElementById('newPassword').value;
-            const role = document.getElementById('newRole').value;
-
-            if (!username || !password) {
-                alert('الاسم وكلمة المرور مطلوبان!');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/admin/users', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentToken}`
-                    },
-                    body: JSON.stringify({ username, password, role })
-                });
-
-                if (response.ok) {
-                    alert('✓ تم الإضافة!');
-                    loadSettings();
-                } else {
-                    alert('❌ هذا الاسم موجود!');
-                }
-            } catch (error) {
-                alert('❌ خطأ!');
-            }
-        }
-
-        async function editUser(userId) {
-            const password = prompt('كلمة المرور الجديدة:');
-            if (password) {
-                try {
-                    await fetch(`/api/admin/users/${userId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${currentToken}`
-                        },
-                        body: JSON.stringify({ password })
-                    });
-                    alert('✓ تم التحديث!');
-                    loadSettings();
-                } catch (error) {
-                    alert('❌ خطأ!');
-                }
-            }
-        }
-
-        async function deleteUser(userId) {
-            if (!confirm('تأكيد الحذف؟')) return;
-
-            try {
-                await fetch(`/api/admin/users/${userId}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${currentToken}` }
-                });
-                alert('✓ تم الحذف!');
-                loadSettings();
-            } catch (error) {
-                alert('❌ خطأ!');
-            }
-        }
-
-        function showMsg(id, msg, success) {
-            const el = document.getElementById(id);
-            if (el) {
-                el.textContent = msg;
-                el.className = 'message ' + (success ? 'success' : 'error');
-            }
-        }
-
-        // Initialize
-        window.addEventListener('load', () => {
-            const token = localStorage.getItem('token');
-            const user = localStorage.getItem('user');
-
-            if (token && user) {
-                currentToken = token;
-                currentUser = JSON.parse(user);
+            if (result.success) {
+                token = result.token;
+                user = result.user;
+                localStorage.setItem('token', token);
+                localStorage.setItem('user', JSON.stringify(user));
                 showApp();
+            } else {
+                err.textContent = 'بيانات غير صحيحة!';
+            }
+        } catch (error) {
+            err.textContent = 'خطأ في الاتصال!';
+        }
+    }
+
+    function logout() {
+        token = null;
+        user = null;
+        localStorage.clear();
+        location.reload();
+    }
+
+    async function showApp() {
+        document.getElementById('login').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+
+        document.getElementById('username-display').textContent = user.username;
+        const roles = { admin: 'مسؤول', editor: 'محرر', reviewer: 'مراجع' };
+        document.getElementById('role-display').textContent = roles[user.role] || user.role;
+
+        buildTabs();
+        loadData();
+    }
+
+    function hasPermission(perm) {
+        return user?.permissions?.includes(perm);
+    }
+
+    function buildTabs() {
+        const tabs = [
+            { id: 'add', label: '➕ إضافة', perm: 'add_products' },
+            { id: 'review', label: '✓ مراجعة', perm: 'review_products' },
+            { id: 'results', label: '📊 النتائج', perm: 'view_reports' },
+            { id: 'settings', label: '⚙️ الإعدادات', perm: 'manage_users' }
+        ];
+
+        const container = document.getElementById('tabs-container');
+        container.innerHTML = '';
+
+        tabs.forEach((t, i) => {
+            if (hasPermission(t.perm)) {
+                const btn = document.createElement('button');
+                btn.className = 'tab-btn' + (i === 0 ? ' active' : '');
+                btn.textContent = t.label;
+                btn.onclick = () => switchTab(t.id);
+                container.appendChild(btn);
             }
         });
-    </script>
+    }
+
+    function switchTab(id) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        event.target.classList.add('active');
+
+        if (id === 'review') showReview();
+        if (id === 'results') showResults();
+        if (id === 'settings') showSettings();
+    }
+
+    async function loadData() {
+        try {
+            const res = await fetch('/api/products', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            data = (await res.json()) || { products: [], reviews: {} };
+            showReview();
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    async function addProduct() {
+        const link = document.getElementById('link').value;
+        const name = document.getElementById('name').value;
+
+        if (!link || !name) {
+            alert('الرابط والاسم مطلوبان!');
+            return;
+        }
+
+        try {
+            await fetch('/api/products', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    link, name,
+                    asin: document.getElementById('asin').value,
+                    brand: document.getElementById('brand').value,
+                    price: document.getElementById('price').value,
+                    category: document.getElementById('category').value,
+                    notes: document.getElementById('notes').value
+                })
+            });
+
+            const msg = document.getElementById('add-msg');
+            msg.textContent = '✓ تم الإضافة!';
+            msg.className = 'message msg-success';
+            msg.classList.remove('hidden');
+
+            document.getElementById('link').value = '';
+            document.getElementById('name').value = '';
+            loadData();
+        } catch (error) {
+            const msg = document.getElementById('add-msg');
+            msg.textContent = '❌ خطأ!';
+            msg.className = 'message msg-error';
+            msg.classList.remove('hidden');
+        }
+    }
+
+    async function uploadExcel() {
+        const file = document.getElementById('excel-file').files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const wb = XLSX.read(e.target.result, { type: 'array' });
+                const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+
+                const products = [];
+                for (let i = 1; i < data.length; i++) {
+                    const row = data[i];
+                    if (row[0] && row[1]) {
+                        products.push({
+                            link: row[0], name: row[1], asin: row[2] || '',
+                            brand: row[3] || '', price: row[4] || '', category: row[5] || '', notes: row[6] || ''
+                        });
+                    }
+                }
+
+                await fetch('/api/products/bulk', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ products })
+                });
+
+                alert(`✓ تم رفع ${products.length} منتج!`);
+                loadData();
+            } catch (error) {
+                alert('❌ خطأ!');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function showReview() {
+        const pending = data.products.find(p => !data.reviews[p.id]);
+        const content = document.getElementById('review-content');
+
+        if (!pending) {
+            content.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">✓ تمت مراجعة جميع المنتجات!</p>';
+            return;
+        }
+
+        const reviewed = Object.keys(data.reviews).length;
+        content.innerHTML = `
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <strong>${pending.name}</strong><br>
+                <small style="color: #999;">المراجعة ${reviewed + 1} من ${data.products.length}</small>
+            </div>
+            <a href="${pending.link}" target="_blank" style="display: inline-block; margin-bottom: 15px; padding: 10px 15px; background: #ff9800; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">🔗 فتح على أمازون</a>
+            
+            <div style="margin: 20px 0;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 600;">الحالة:</label>
+                <button onclick="selectStatus('متوفر بكثرة')" style="padding: 10px; margin: 5px; border: 2px solid #4caf50; background: white; cursor: pointer; border-radius: 6px; font-weight: 600;">✓ متوفر</button>
+                <button onclick="selectStatus('متوفر بقلة')" style="padding: 10px; margin: 5px; border: 2px solid #ff9800; background: white; cursor: pointer; border-radius: 6px; font-weight: 600;">⚠️ محدود</button>
+                <button onclick="selectStatus('غير متوفر')" style="padding: 10px; margin: 5px; border: 2px solid #f44336; background: white; cursor: pointer; border-radius: 6px; font-weight: 600;">✗ غير متوفر</button>
+            </div>
+
+            <div class="form-group">
+                <label>اسم المورد</label>
+                <input type="text" id="supplier" placeholder="أمازون مصر...">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                    <label>سعر الشراء</label>
+                    <input type="number" id="purchase-price" placeholder="0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>الكمية</label>
+                    <input type="number" id="quantity" placeholder="0" min="0">
+                </div>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="purchased"> تم الشراء</label>
+            </div>
+            <div class="form-group">
+                <label>ملاحظات</label>
+                <textarea id="review-notes" placeholder="ملاحظات..."></textarea>
+            </div>
+
+            <button class="btn-primary" onclick="saveReview('${pending.id}')">✓ حفظ والتالي</button>
+            <button class="btn-primary btn-secondary" style="margin-top: 5px;" onclick="showReview()">⏭️ تخطي</button>
+        `;
+    }
+
+    function selectStatus(status) {
+        selectedStatus = status;
+    }
+
+    async function saveReview(id) {
+        if (!selectedStatus) {
+            alert('اختر الحالة!');
+            return;
+        }
+
+        await fetch(`/api/reviews/${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                status: selectedStatus,
+                supplier: document.getElementById('supplier').value,
+                purchasePrice: document.getElementById('purchase-price').value || null,
+                quantity: parseInt(document.getElementById('quantity').value) || 0,
+                purchased: document.getElementById('purchased').checked,
+                notes: document.getElementById('review-notes').value
+            })
+        });
+
+        selectedStatus = null;
+        loadData();
+    }
+
+    async function showResults() {
+        const reviewed = Object.keys(data.reviews).length;
+        const purchased_count = Object.values(data.reviews).filter(r => r.purchased).length;
+
+        document.getElementById('total').textContent = data.products.length;
+        document.getElementById('reviewed').textContent = reviewed;
+        document.getElementById('purchased').textContent = purchased_count;
+        document.getElementById('pending').textContent = data.products.length - reviewed;
+
+        let html = '';
+        data.products.forEach(p => {
+            const r = data.reviews[p.id];
+            const statusClass = !r ? 'status-no' : r.status === 'متوفر بكثرة' ? 'status-available' : r.status === 'متوفر بقلة' ? 'status-limited' : 'status-unavailable';
+            html += `
+                <tr>
+                    <td>${p.name}</td>
+                    <td>${p.addedAt ? p.addedAt.split(' ')[0] : '-'}</td>
+                    <td>${r ? `<span class="status-badge ${statusClass}">${r.status}</span>` : '-'}</td>
+                    <td>${r?.supplier || '-'}</td>
+                    <td><span class="status-badge ${r?.purchased ? 'status-yes' : 'status-no'}">${r?.purchased ? 'نعم' : 'لا'}</span></td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('results-table').innerHTML = html || '<tr><td colspan="5" style="text-align: center; color: #ccc;">لا توجد منتجات</td></tr>';
+    }
+
+    function downloadExcel() {
+        const ws_data = [['المنتج', 'التاريخ', 'الحالة', 'المورد', 'الشراء']];
+        data.products.forEach(p => {
+            const r = data.reviews[p.id];
+            ws_data.push([p.name, p.addedAt || '', r?.status || '', r?.supplier || '', r?.purchased ? 'نعم' : 'لا']);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws);
+        XLSX.writeFile(wb, 'منتجات.xlsx');
+    }
+
+    function downloadCSV() {
+        let csv = 'المنتج,التاريخ,الحالة,المورد,الشراء\n';
+        data.products.forEach(p => {
+            const r = data.reviews[p.id];
+            csv += `"${p.name}","${p.addedAt || ''}","${r?.status || ''}","${r?.supplier || ''}","${r?.purchased ? 'نعم' : 'لا'}"\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'منتجات.csv';
+        link.click();
+    }
+
+    async function showSettings() {
+        if (!hasPermission('manage_users')) {
+            document.getElementById('users-list').innerHTML = '<p style="color: #f44336;">ليس لديك صلاحية!</p>';
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/admin/users', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await res.json();
+            const users = result.users || [];
+
+            let html = '<h3 style="color: #333; margin-bottom: 15px;">المستخدمون الحاليون</h3>';
+            users.forEach(u => {
+                html += `
+                    <div style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>${u.username}</strong><br>
+                            <small style="color: #999;">${u.role}</small>
+                        </div>
+                        <div>
+                            <button class="btn-small" onclick="editUser(${u.id})">تعديل</button>
+                            <button class="btn-small danger" onclick="deleteUser(${u.id})">حذف</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('users-list').innerHTML = html;
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    async function createUser() {
+        const username = document.getElementById('new-username').value;
+        const password = document.getElementById('new-password').value;
+        const role = document.getElementById('new-role').value;
+
+        if (!username || !password) {
+            alert('الاسم وكلمة المرور مطلوبان!');
+            return;
+        }
+
+        try {
+            await fetch('/api/admin/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ username, password, role })
+            });
+
+            alert('✓ تم الإضافة!');
+            document.getElementById('new-username').value = '';
+            document.getElementById('new-password').value = '';
+            showSettings();
+        } catch (error) {
+            alert('❌ خطأ!');
+        }
+    }
+
+    function editUser(id) {
+        const password = prompt('كلمة المرور الجديدة:');
+        if (password) {
+            fetch(`/api/admin/users/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ password })
+            }).then(() => {
+                alert('✓ تم التحديث!');
+                showSettings();
+            });
+        }
+    }
+
+    async function deleteUser(id) {
+        if (!confirm('تأكيد الحذف؟')) return;
+        await fetch(`/api/admin/users/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        alert('✓ تم الحذف!');
+        showSettings();
+    }
+
+    // Initialize
+    window.addEventListener('load', () => {
+        const t = localStorage.getItem('token');
+        const u = localStorage.getItem('user');
+
+        if (t && u) {
+            token = t;
+            user = JSON.parse(u);
+            showApp();
+        }
+    });
+</script>
+
 </body>
 </html>
