@@ -497,24 +497,35 @@
             return;
         }
 
-        await fetch(`/api/reviews/${id}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                status: selectedStatus,
-                supplier: document.getElementById('supplier').value,
-                purchasePrice: document.getElementById('purchase-price').value || null,
-                quantity: parseInt(document.getElementById('quantity').value) || 0,
-                purchased: document.getElementById('purchased').checked,
-                notes: document.getElementById('review-notes').value
-            })
-        });
+        try {
+            const response = await fetch(`/api/reviews/${id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    status: selectedStatus,
+                    supplier: document.getElementById('supplier').value,
+                    purchasePrice: document.getElementById('purchase-price').value || null,
+                    quantity: parseInt(document.getElementById('quantity').value) || 0,
+                    purchased: document.getElementById('purchased').checked,
+                    notes: document.getElementById('review-notes').value
+                })
+            });
 
-        selectedStatus = null;
-        loadData();
+            if (response.ok) {
+                selectedStatus = null;
+                // تحميل البيانات الجديدة وعرض المنتج التالي
+                await loadData();
+                showReview(); // عرض المنتج التالي مباشرة
+            } else {
+                alert('❌ خطأ في الحفظ!');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ خطأ في الاتصال!');
+        }
     }
 
     async function showResults() {
