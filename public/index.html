@@ -19,12 +19,12 @@
         .error-msg { color: #f44336; text-align: center; margin-bottom: 15px; font-size: 14px; }
 
         #app { display: none; }
-        .app-header { background: rgba(255,255,255,0.95); padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .app-header { background: #ffffff; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); }
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .header-title h1 { font-size: 26px; color: #333; margin-bottom: 5px; }
-        .header-title p { color: #999; font-size: 14px; }
-        .user-section { text-align: right; }
-        .user-info { color: #666; font-size: 13px; margin-bottom: 8px; }
+        .header-title h1 { font-size: 28px; color: #667eea; margin-bottom: 5px; font-weight: 700; }
+        .header-title p { color: #666; font-size: 14px; }
+        .user-section { text-align: left; }
+        .user-info { color: #333; font-size: 13px; margin-bottom: 6px; font-weight: 600; }
         .logout-btn { background: #f44336; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
 
         .tabs { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
@@ -177,20 +177,54 @@
                 <div class="stat-label">بانتظار</div>
             </div>
         </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>المنتج</th>
-                    <th>التاريخ</th>
-                    <th>الحالة</th>
-                    <th>المورد</th>
-                    <th>الشراء</th>
-                </tr>
-            </thead>
-            <tbody id="results-table"></tbody>
-        </table>
-        <button class="btn-small" onclick="downloadExcel()">📥 Excel</button>
-        <button class="btn-small" onclick="downloadCSV()">📥 CSV</button>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
+            <div>
+                <label style="display: block; font-weight: 600; color: #333; margin-bottom: 6px; font-size: 13px;">تصفية الحالة:</label>
+                <select id="status-filter" onchange="applyFilter()" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                    <option value="">-- الكل --</option>
+                    <option value="متوفر بكثرة">✓ متوفر بكثرة</option>
+                    <option value="متوفر بقلة">⚠️ متوفر بقلة</option>
+                    <option value="غير متوفر">✗ غير متوفر</option>
+                    <option value="لم يراجع">لم يراجع</option>
+                </select>
+            </div>
+            <div>
+                <label style="display: block; font-weight: 600; color: #333; margin-bottom: 6px; font-size: 13px;">عدد الصفوف:</label>
+                <select id="page-size" onchange="applyFilter()" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                    <option value="5">5 منتجات</option>
+                    <option value="10" selected>10 منتجات</option>
+                    <option value="20">20 منتج</option>
+                    <option value="50">50 منتج</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>المنتج</th>
+                        <th>التاريخ</th>
+                        <th>الحالة</th>
+                        <th>المورد</th>
+                        <th>الشراء</th>
+                    </tr>
+                </thead>
+                <tbody id="results-table"></tbody>
+            </table>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: center; align-items: center; margin: 20px 0; flex-wrap: wrap;">
+            <button style="padding: 8px 15px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" onclick="previousPage()">← السابق</button>
+            <span id="page-info" style="font-weight: 600; color: #333; min-width: 100px; text-align: center;">الصفحة 1</span>
+            <button style="padding: 8px 15px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" onclick="nextPage()">التالي →</button>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+            <button class="btn-small" onclick="downloadExcel()" style="background: #4caf50; flex: 1;">📥 Excel</button>
+            <button class="btn-small" onclick="downloadCSV()" style="background: #2196F3; flex: 1;">📥 CSV</button>
+        </div>
     </div>
 
     <!-- SETTINGS -->
@@ -215,6 +249,9 @@
     let user = null;
     let data = { products: [], reviews: {} };
     let selectedStatus = null;
+    let currentPage = 1;
+    let filteredProducts = [];
+    let pageSize = 10;
 
     async function login() {
         const username = document.getElementById('username').value;
@@ -488,8 +525,33 @@
         document.getElementById('purchased').textContent = purchased_count;
         document.getElementById('pending').textContent = data.products.length - reviewed;
 
+        applyFilter();
+    }
+
+    function applyFilter() {
+        const statusFilter = document.getElementById('status-filter').value;
+        pageSize = parseInt(document.getElementById('page-size').value) || 10;
+        
+        filteredProducts = data.products.filter(p => {
+            if (!statusFilter) return true;
+            const r = data.reviews[p.id];
+            
+            if (statusFilter === 'لم يراجع') return !r;
+            return r && r.status === statusFilter;
+        });
+
+        currentPage = 1;
+        displayResults();
+    }
+
+    function displayResults() {
+        const start = (currentPage - 1) * pageSize;
+        const end = start + pageSize;
+        const page = filteredProducts.slice(start, end);
+        const totalPages = Math.ceil(filteredProducts.length / pageSize) || 1;
+
         let html = '';
-        data.products.forEach(p => {
+        page.forEach(p => {
             const r = data.reviews[p.id];
             const statusClass = !r ? 'status-no' : r.status === 'متوفر بكثرة' ? 'status-available' : r.status === 'متوفر بقلة' ? 'status-limited' : 'status-unavailable';
             html += `
@@ -503,33 +565,89 @@
             `;
         });
 
-        document.getElementById('results-table').innerHTML = html || '<tr><td colspan="5" style="text-align: center; color: #ccc;">لا توجد منتجات</td></tr>';
+        document.getElementById('results-table').innerHTML = html || '<tr><td colspan="5" style="text-align: center; color: #ccc;">لا توجد نتائج</td></tr>';
+        document.getElementById('page-info').textContent = `الصفحة ${currentPage} من ${totalPages}`;
+    }
+
+    function previousPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            displayResults();
+        }
+    }
+
+    function nextPage() {
+        const totalPages = Math.ceil(filteredProducts.length / pageSize) || 1;
+        if (currentPage < totalPages) {
+            currentPage++;
+            displayResults();
+        }
     }
 
     function downloadExcel() {
-        const ws_data = [['المنتج', 'التاريخ', 'الحالة', 'المورد', 'الشراء']];
+        const headers = ['المنتج', 'ASIN', 'البراند', 'السعر على أمازون', 'القسم', 'ملاحظات المنتج', 'التاريخ المضاف', 'الحالة', 'المورد 🏪', 'سعر الشراء', 'الكمية', 'تم الشراء', 'ملاحظات المراجعة', 'تاريخ المراجعة'];
+        const ws_data = [headers];
+
         data.products.forEach(p => {
             const r = data.reviews[p.id];
-            ws_data.push([p.name, p.addedAt || '', r?.status || '', r?.supplier || '', r?.purchased ? 'نعم' : 'لا']);
+            ws_data.push([
+                p.name || '',
+                p.asin || '',
+                p.brand || '',
+                p.price || '',
+                p.category || '',
+                p.notes || '',
+                p.addedAt ? p.addedAt.split('T')[0] : '',
+                r?.status || 'لم يراجع',
+                r?.supplier || '',
+                r?.purchasePrice || '',
+                r?.quantity || '',
+                r?.purchased ? 'نعم' : 'لا',
+                r?.notes || '',
+                r?.reviewedAt ? r.reviewedAt.split('T')[0] : ''
+            ]);
         });
 
         const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        
+        // تنسيق الأعمدة
+        const colWidths = [25, 15, 15, 15, 12, 20, 15, 15, 15, 12, 8, 10, 20, 15];
+        ws['!cols'] = colWidths.map(w => ({ wch: w }));
+
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws);
-        XLSX.writeFile(wb, 'منتجات.xlsx');
+        XLSX.utils.book_append_sheet(wb, ws, 'تقرير المنتجات');
+        XLSX.writeFile(wb, `تقرير_منتجات_${new Date().toLocaleDateString('ar-EG')}.xlsx`);
     }
 
     function downloadCSV() {
-        let csv = 'المنتج,التاريخ,الحالة,المورد,الشراء\n';
+        const headers = ['المنتج', 'ASIN', 'البراند', 'السعر على أمازون', 'القسم', 'ملاحظات المنتج', 'التاريخ المضاف', 'الحالة', 'المورد', 'سعر الشراء', 'الكمية', 'تم الشراء', 'ملاحظات المراجعة', 'تاريخ المراجعة'];
+        let csv = headers.join(',') + '\n';
+
         data.products.forEach(p => {
             const r = data.reviews[p.id];
-            csv += `"${p.name}","${p.addedAt || ''}","${r?.status || ''}","${r?.supplier || ''}","${r?.purchased ? 'نعم' : 'لا'}"\n`;
+            const row = [
+                `"${p.name || ''}"`,
+                `"${p.asin || ''}"`,
+                `"${p.brand || ''}"`,
+                `"${p.price || ''}"`,
+                `"${p.category || ''}"`,
+                `"${(p.notes || '').replace(/"/g, '""')}"`,
+                p.addedAt ? p.addedAt.split('T')[0] : '',
+                `"${r?.status || 'لم يراجع'}"`,
+                `"${r?.supplier || ''}"`,
+                r?.purchasePrice || '',
+                r?.quantity || '',
+                r?.purchased ? 'نعم' : 'لا',
+                `"${(r?.notes || '').replace(/"/g, '""')}"`,
+                r?.reviewedAt ? r.reviewedAt.split('T')[0] : ''
+            ];
+            csv += row.join(',') + '\n';
         });
 
-        const blob = new Blob([csv], { type: 'text/csv' });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = 'منتجات.csv';
+        link.download = `تقرير_منتجات_${new Date().toLocaleDateString('ar-EG')}.csv`;
         link.click();
     }
 
