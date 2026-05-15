@@ -439,16 +439,33 @@
     }
 
     async function showApp() {
-        document.getElementById('login').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
+        console.log('🚀 showApp starting...');
+        
+        try {
+            // 1. إظهار واجهة التطبيق
+            document.getElementById('login').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
 
-        document.getElementById('username-display').textContent = user.username;
-        const roles = { admin: 'مسؤول', editor: 'محرر', reviewer: 'مراجع' };
-        document.getElementById('role-display').textContent = roles[user.role] || user.role;
+            // 2. تحديث معلومات المستخدم
+            document.getElementById('username-display').textContent = user.username;
+            const roles = { admin: 'مسؤول', editor: 'محرر', reviewer: 'مراجع' };
+            document.getElementById('role-display').textContent = roles[user.role] || user.role;
 
-        buildTabs();
-        await loadData();  // انتظر حتى تحميل البيانات
-        switchTab('review');  // اذهب لصفحة المراجعة
+            // 3. بناء التبويبات
+            buildTabs();
+            
+            // 4. تحميل البيانات (قبل عرض أي شيء!)
+            console.log('📡 Loading data...');
+            await loadData();
+            console.log('✅ Data loaded successfully!');
+            
+            // 5. الآن عرض المحتوى (بعد ما تنتهي البيانات)
+            switchTab('review');
+            console.log('✅ App ready!');
+        } catch (error) {
+            console.error('❌ Error in showApp:', error);
+            alert('خطأ في تحميل التطبيق: ' + error.message);
+        }
     }
 
     function hasPermission(perm) {
@@ -1131,14 +1148,23 @@
     }
 
     // Initialize
-    window.addEventListener('load', () => {
-        const t = localStorage.getItem('token');
-        const u = localStorage.getItem('user');
+    window.addEventListener('load', async () => {
+        try {
+            const t = localStorage.getItem('token');
+            const u = localStorage.getItem('user');
 
-        if (t && u) {
-            token = t;
-            user = JSON.parse(u);
-            showApp();
+            console.log('🔄 Checking stored credentials...');
+            
+            if (t && u) {
+                console.log('✅ Found stored credentials!');
+                token = t;
+                user = JSON.parse(u);
+                await showApp();  // انتظر شامل!
+            } else {
+                console.log('❌ No stored credentials found');
+            }
+        } catch (error) {
+            console.error('❌ Initialization error:', error);
         }
     });
 </script>
