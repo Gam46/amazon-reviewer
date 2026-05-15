@@ -193,6 +193,30 @@
                 </div>
 
                 <div style="overflow-x: auto;">
+                    <!-- Filter and Pagination Controls -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center;">
+                        <div style="flex: 1; min-width: 150px;">
+                            <label style="display: block; font-size: 12px; margin-bottom: 5px; font-weight: 600;">تصفية الحالة:</label>
+                            <select id="statusFilter" onchange="applyFilters()" style="width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                                <option value="">الكل</option>
+                                <option value="متوفر بكثرة">متوفر بكثرة ✓</option>
+                                <option value="متوفر بقلة">متوفر بقلة ⚠️</option>
+                                <option value="غير متوفر">غير متوفر ✗</option>
+                                <option value="لم يراجع">لم يراجع بعد</option>
+                            </select>
+                        </div>
+                        
+                        <div style="flex: 1; min-width: 150px;">
+                            <label style="display: block; font-size: 12px; margin-bottom: 5px; font-weight: 600;">عدد الصفوف:</label>
+                            <select id="pageSize" onchange="applyFilters()" style="width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+                                <option value="5">5 منتجات</option>
+                                <option value="10" selected>10 منتجات</option>
+                                <option value="20">20 منتج</option>
+                                <option value="50">50 منتج</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <table class="results-table" id="resultsTable">
                         <thead>
                             <tr>
@@ -206,6 +230,13 @@
                         <tbody id="resultsBody">
                         </tbody>
                     </table>
+
+                    <!-- Pagination Controls -->
+                    <div style="display: flex; gap: 8px; margin-top: 15px; justify-content: center; flex-wrap: wrap; align-items: center;">
+                        <button onclick="previousPage()" style="padding: 8px 15px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">← السابق</button>
+                        <span id="pageInfo" style="font-size: 12px; font-weight: 600; color: #333; min-width: 120px; text-align: center;">الصفحة 1</span>
+                        <button onclick="nextPage()" style="padding: 8px 15px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">التالي →</button>
+                    </div>
                 </div>
 
                 <div class="button-group" style="margin-top: 15px;">
@@ -636,11 +667,139 @@
             element.className = `message ${type}`;
         }
 
+        // Pagination variables
+        let currentPage = 1;
+        let filteredProducts = [];
+
+        function applyFilters() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            
+            filteredProducts = allData.products.filter(product => {
+                if (!statusFilter) return true;
+                
+                const review = allData.reviews[product.id];
+                
+                if (statusFilter === 'لم يراجع') {
+                    return !review;
+                }
+                
+                return review && review.status === statusFilter;
+            });
+
+            currentPage = 1;
+            displayPaginatedResults();
+        }
+
+        function displayPaginatedResults() {
+            const pageSize = parseInt(document.getElementById('pageSize').value) || 10;
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
+            
+            const productsToShow = filteredProducts.slice(startIndex, endIndex);
+            const totalPages = Math.ceil(filteredProducts.length / pageSize);
+            
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+
+            if (productsToShow.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #ccc; padding: 30px;">لا توجد نتائج</td></tr>';
+                document.getElementById('pageInfo').textContent = `الصفحة 0 من 0`;
+                return;
+            }
+
+            productsToShow.forEach(product => {
+                const review = allData.reviews[product.id];
+                const statusEmoji = {
+                    'متوفر بكثرة': '✓ متوفر',
+                    'متوفر بقلة': '⚠️ محدود',
+                    'غير متوفر': '✗ غير متوفر'
+                };
+
+                const statusClass = {
+                    'متوفر بكثرة': 'status-available',
+                    'متوفر بقلة': 'status-limited',
+                    'غير متوفر': 'status-unavailable'
+                };
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis;">${product.name}</td>
+                    <td>${product.asin || '-'}</td>
+                    <td>${review ? `<span class="status-badge ${statusClass[review.status]}">${statusEmoji[review.status]}</span>` : '<span style="color: #ccc;">بانتظار</span>'}</td>
+                    <td>${review && review.purchased ? '✓ نعم' : '-'}</td>
+                    <td>
+                        <div class="action-menu">
+                            <button class="action-btn" onclick="toggleMenu(event)">⋮</button>
+                            <div class="dropdown-menu" style="display: none;">
+                                <button onclick="viewProduct('${product.link}')">🔗 فتح</button>
+                                <button onclick="reReviewProduct('${product.id}')">✏️ إعادة مراجعة</button>
+                                <button class="delete" onclick="deleteProduct('${product.id}')">🗑️ حذف</button>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('pageInfo').textContent = `الصفحة ${currentPage} من ${totalPages} (${filteredProducts.length} منتج)`;
+            
+            // Disable/enable navigation buttons
+            document.querySelectorAll('button').forEach(btn => {
+                if (btn.textContent.includes('السابق')) {
+                    btn.disabled = currentPage === 1;
+                    btn.style.opacity = currentPage === 1 ? '0.5' : '1';
+                }
+                if (btn.textContent.includes('التالي')) {
+                    btn.disabled = currentPage === totalPages;
+                    btn.style.opacity = currentPage === totalPages ? '0.5' : '1';
+                }
+            });
+        }
+
+        function nextPage() {
+            const pageSize = parseInt(document.getElementById('pageSize').value) || 10;
+            const totalPages = Math.ceil(filteredProducts.length / pageSize);
+            
+            if (currentPage < totalPages) {
+                currentPage++;
+                displayPaginatedResults();
+            }
+        }
+
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                displayPaginatedResults();
+            }
+        }
+
         document.addEventListener('click', () => {
             document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
         });
 
-        loadData();
+        // Override updateResults to use pagination
+        const originalUpdateResults = updateResults;
+        window.updateResults = async function() {
+            await loadData();
+
+            const reviewed = Object.keys(allData.reviews).length;
+            const pending = allData.products.length - reviewed;
+            const purchased = Object.values(allData.reviews).filter(r => r.purchased).length;
+
+            document.getElementById('totalProducts').textContent = allData.products.length;
+            document.getElementById('reviewedCount').textContent = reviewed;
+            document.getElementById('purchasedCount').textContent = purchased;
+            document.getElementById('pendingCount').textContent = pending;
+
+            filteredProducts = allData.products;
+            currentPage = 1;
+            displayPaginatedResults();
+        };
+
+        loadData().then(() => {
+            filteredProducts = allData.products;
+            displayPaginatedResults();
+        });
     </script>
 </body>
 </html>
