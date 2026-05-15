@@ -1,0 +1,11 @@
+{
+  "builder": "nixpacks",
+  "buildCommand": "npm install",
+  "startCommand": "node server.js",
+  "volumes": [
+    {
+      "path": "/app/.data",
+      "name": "data-volume"
+    }
+  ]
+}
