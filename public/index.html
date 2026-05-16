@@ -4,174 +4,1160 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YAK Store - مراجع منتجات أمازون</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
+        /* ===== CSS Variables for Light Mode ===== */
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #8b5cf6;
+            --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            --gradient-soft: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+            
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-secondary: #f1f5f9;
+            --bg-hover: #f8fafc;
+            
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            
+            --border: #e2e8f0;
+            --border-light: #f1f5f9;
+            
+            --success: #10b981;
+            --success-bg: #d1fae5;
+            --warning: #f59e0b;
+            --warning-bg: #fef3c7;
+            --danger: #ef4444;
+            --danger-bg: #fee2e2;
+            --info: #3b82f6;
+            --info-bg: #dbeafe;
+            
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        /* ===== Dark Mode ===== */
+        [data-theme="dark"] {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --bg-secondary: #334155;
+            --bg-hover: #334155;
+            
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            
+            --border: #334155;
+            --border-light: #1e293b;
+            
+            --success-bg: rgba(16, 185, 129, 0.2);
+            --warning-bg: rgba(245, 158, 11, 0.2);
+            --danger-bg: rgba(239, 68, 68, 0.2);
+            --info-bg: rgba(59, 130, 246, 0.2);
+            
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ===== Base ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        input, textarea, select { -webkit-user-select: text; user-select: text; }
         
-        .login-container { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .login-card { background: white; border-radius: 15px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px; width: 100%; }
-        .login-title { text-align: center; font-size: 28px; color: #333; margin-bottom: 30px; font-weight: 700; }
-        .input-field { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; margin-bottom: 15px; }
-        .input-field:focus { outline: none; border-color: #667eea; }
-        .login-btn { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 16px; }
-        .error-msg { color: #f44336; text-align: center; margin-bottom: 15px; font-size: 14px; }
+        body { 
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg-main);
+            min-height: 100vh; 
+            padding: 20px;
+            color: var(--text-primary);
+            transition: background 0.3s ease;
+        }
+        
+        input, textarea, select { 
+            -webkit-user-select: text; 
+            user-select: text;
+            font-family: 'Cairo', sans-serif;
+        }
+        
+        /* ===== Login ===== */
+        .login-container { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh;
+            background: var(--gradient);
+            margin: -20px;
+            padding: 20px;
+        }
+        
+        .login-card { 
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 45px 40px;
+            box-shadow: var(--shadow-lg);
+            max-width: 420px; 
+            width: 100%;
+            animation: fadeInUp 0.6s ease;
+        }
+        
+        .login-title { 
+            text-align: center; 
+            font-size: 32px; 
+            color: var(--text-primary); 
+            margin-bottom: 8px;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .login-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .input-field { 
+            width: 100%; 
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 15px;
+            margin-bottom: 15px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+        
+        .input-field:focus { 
+            outline: none; 
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+        
+        .login-btn { 
+            width: 100%; 
+            padding: 14px;
+            background: var(--gradient);
+            color: white; 
+            border: none; 
+            border-radius: 12px;
+            font-weight: 700; 
+            cursor: pointer; 
+            font-size: 16px;
+            font-family: 'Cairo', sans-serif;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+        }
+        
+        .login-btn:active { transform: translateY(0); }
+        
+        .login-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .error-msg { 
+            color: var(--danger); 
+            text-align: center; 
+            margin-bottom: 15px; 
+            font-size: 14px;
+            padding: 10px;
+            background: var(--danger-bg);
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .error-msg.show { display: block; animation: shake 0.4s; }
 
+        /* ===== App ===== */
         #app { display: none; }
-        .app-header { background: #ffffff; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); border: 1px solid #f0f0f0; }
-        .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
-        .header-title h1 { font-size: 28px; color: #667eea; margin-bottom: 5px; font-weight: 700; }
-        .header-title p { color: #999; font-size: 13px; }
-        .user-section { text-align: left; background: #f5f5f5; padding: 10px 15px; border-radius: 8px; }
-        .user-info { color: #333; font-size: 13px; margin-bottom: 5px; font-weight: 600; }
-        .logout-btn { background: #f44336; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; margin-top: 8px; width: 100%; }
+        
+        .app-header { 
+            background: var(--bg-card);
+            padding: 20px 24px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+        
+        .header-top { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+        
+        .header-title h1 { 
+            font-size: 24px; 
+            color: var(--text-primary);
+            margin-bottom: 4px; 
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: inline-block;
+        }
+        
+        .header-title p { 
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .theme-toggle {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+        
+        .theme-toggle:hover { transform: rotate(20deg); }
+        
+        .user-section { 
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-secondary);
+            padding: 8px 14px;
+            border-radius: 12px;
+        }
+        
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        
+        .user-info { 
+            color: var(--text-primary);
+            font-size: 13px; 
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        
+        .user-info small {
+            color: var(--text-muted);
+            font-size: 11px;
+            display: block;
+            font-weight: 400;
+        }
+        
+        .logout-btn { 
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer; 
+            font-size: 12px; 
+            font-weight: 600;
+            font-family: 'Cairo', sans-serif;
+            transition: all 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: var(--danger);
+            color: white;
+        }
 
-        .tabs { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; padding: 12px 0; border-bottom: 2px solid #e0e0e0; background: #ffffff; border-radius: 8px; padding-left: 12px; }
-        .tab-btn { padding: 10px 18px; background: #f5f5f5; color: #333; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s; }
-        .tab-btn:hover { background: #eeeeee; border-color: #667eea; }
-        .tab-btn.active { background: #667eea; color: #ffffff; border-color: #667eea; font-weight: 700; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); }
+        /* ===== Tabs ===== */
+        .tabs { 
+            display: flex; 
+            gap: 8px; 
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            background: var(--bg-card);
+            padding: 8px;
+            border-radius: 14px;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .tab-btn { 
+            padding: 10px 18px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer; 
+            font-weight: 600; 
+            font-size: 14px;
+            font-family: 'Cairo', sans-serif;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .tab-btn:hover { 
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        
+        .tab-btn.active { 
+            background: var(--gradient);
+            color: white;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .tab-badge {
+            display: inline-block;
+            background: var(--danger);
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-right: 4px;
+            font-weight: 700;
+        }
 
-        .content-card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
-        .tab-content { display: none; }
+        /* ===== Content Card ===== */
+        .content-card { 
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-light);
+        }
+        
+        .tab-content { display: none; animation: fadeIn 0.4s; }
         .tab-content.active { display: block; }
+        
+        h2 { 
+            font-size: 22px; 
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+        
+        h3 {
+            color: var(--text-primary);
+            font-size: 17px;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
 
-        h2 { font-size: 22px; color: #333; margin-bottom: 20px; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-weight: 600; color: #333; margin-bottom: 6px; font-size: 13px; }
-        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; }
-        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #667eea; }
-        .form-group textarea { min-height: 80px; resize: vertical; }
+        /* ===== Form ===== */
+        .form-group { margin-bottom: 18px; }
+        
+        .form-group label { 
+            display: block; 
+            font-weight: 600; 
+            color: var(--text-primary);
+            margin-bottom: 8px; 
+            font-size: 13px;
+        }
+        
+        .form-group input, .form-group textarea, .form-group select { 
+            width: 100%; 
+            padding: 12px 14px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+        
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { 
+            outline: none; 
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+        
+        .form-group textarea { 
+            min-height: 90px; 
+            resize: vertical;
+        }
 
-        .btn-primary { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 10px; font-size: 14px; }
-        .btn-secondary { background: #999; }
-        .btn-small { display: inline-block; padding: 6px 12px; margin-right: 8px; margin-bottom: 8px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .btn-small.danger { background: #f44336; }
+        /* ===== Buttons ===== */
+        .btn-primary { 
+            width: 100%; 
+            padding: 13px;
+            background: var(--gradient);
+            color: white; 
+            border: none; 
+            border-radius: 10px;
+            font-weight: 700; 
+            cursor: pointer; 
+            margin-top: 10px; 
+            font-size: 14px;
+            font-family: 'Cairo', sans-serif;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+        }
+        
+        .btn-primary:active { transform: translateY(0); }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary { 
+            background: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+            border: 2px solid var(--border) !important;
+        }
+        
+        .btn-secondary:hover {
+            background: var(--border) !important;
+            transform: translateY(-2px);
+        }
+        
+        .btn-small { 
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 8px 14px;
+            margin-right: 6px;
+            margin-bottom: 6px;
+            background: var(--info);
+            color: white; 
+            border: none; 
+            border-radius: 8px;
+            cursor: pointer; 
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'Cairo', sans-serif;
+            transition: all 0.3s;
+        }
+        
+        .btn-small:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow);
+        }
+        
+        .btn-small.danger { background: var(--danger); }
+        .btn-small.success { background: var(--success); }
+        .btn-small.warning { background: var(--warning); }
 
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; }
-        .stat-num { font-size: 28px; font-weight: 700; }
-        .stat-label { font-size: 12px; margin-top: 8px; opacity: 0.9; }
+        /* ===== Stats Grid ===== */
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
+            gap: 14px; 
+            margin-bottom: 24px;
+        }
+        
+        .stat-card { 
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 22px;
+            border-radius: 14px;
+            text-align: center;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .stat-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .stat-num { 
+            font-size: 32px; 
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+        
+        .stat-label { 
+            font-size: 13px; 
+            margin-top: 8px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
 
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
-        th { background: #f5f5f5; font-weight: 600; color: #333; }
-        tr:hover { background: #f9f9f9; }
+        /* ===== Table ===== */
+        .table-wrapper {
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+        }
+        
+        table { 
+            width: 100%; 
+            border-collapse: collapse;
+        }
+        
+        th, td { 
+            padding: 14px 12px; 
+            text-align: right; 
+            border-bottom: 1px solid var(--border-light);
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+        
+        th { 
+            background: var(--bg-secondary);
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        tr:hover { background: var(--bg-hover); }
+        tr:last-child td { border-bottom: none; }
 
-        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-        .status-yes { background: #e8f5e9; color: #4caf50; }
-        .status-no { background: #f0f0f0; color: #666; }
-        .status-available { background: #e8f5e9; color: #4caf50; }
-        .status-limited { background: #fff3e0; color: #ff9800; }
-        .status-unavailable { background: #ffebee; color: #f44336; }
+        /* ===== Status Badges ===== */
+        .status-badge { 
+            padding: 5px 10px; 
+            border-radius: 8px; 
+            font-size: 11px; 
+            font-weight: 700;
+            display: inline-block;
+        }
+        
+        .status-yes { background: var(--success-bg); color: var(--success); }
+        .status-no { background: var(--bg-secondary); color: var(--text-muted); }
+        .status-available { background: var(--success-bg); color: var(--success); }
+        .status-limited { background: var(--warning-bg); color: var(--warning); }
+        .status-unavailable { background: var(--danger-bg); color: var(--danger); }
 
-        .message { padding: 12px; border-radius: 6px; margin-top: 10px; font-size: 13px; }
-        .msg-success { background: #e8f5e9; color: #4caf50; }
-        .msg-error { background: #ffebee; color: #f44336; }
+        /* ===== Messages ===== */
+        .message { 
+            padding: 14px; 
+            border-radius: 10px;
+            margin-top: 12px; 
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        .msg-success { background: var(--success-bg); color: var(--success); }
+        .msg-error { background: var(--danger-bg); color: var(--danger); }
 
         .hidden { display: none !important; }
 
-        /* ===== MOBILE RESPONSIVE ===== */
-        @media (max-width: 768px) {
-            body { padding: 10px; }
-            .login-card { padding: 20px; }
-            .login-title { font-size: 22px; }
-            
-            .app-header { padding: 15px; margin-bottom: 15px; }
-            .header-top { flex-direction: column; gap: 10px; }
-            .header-title h1 { font-size: 18px; }
-            .user-section { width: 100%; text-align: right; }
-            
-            .content-card { padding: 15px; }
-            h2 { font-size: 18px; margin-bottom: 15px; }
-            
-            .tabs { gap: 6px; padding-left: 8px; flex-wrap: wrap; overflow-x: auto; }
-            .tab-btn { padding: 8px 12px; font-size: 12px; white-space: nowrap; }
-            
-            .form-group input, .form-group textarea, .form-group select { font-size: 16px; padding: 12px; }
-            .form-group textarea { min-height: 60px; }
-            
-            .btn-primary { padding: 12px; font-size: 14px; }
-            .btn-small { padding: 8px 10px; font-size: 11px; margin-right: 5px; margin-bottom: 5px; }
-            
-            .stats-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 15px; }
-            .stat-card { padding: 15px; }
-            .stat-num { font-size: 20px; }
-            .stat-label { font-size: 11px; }
-            
-            /* جدول النتائج */
-            table { font-size: 12px; }
-            th, td { padding: 8px; }
-            
-            /* أزرار الحالة */
-            [data-status-btn] { padding: 10px 12px !important; margin: 3px 2px !important; font-size: 12px !important; width: auto; }
-            
-            /* البحث والفيلتر */
-            [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
-            #asin-search, #name-search { width: 100%; }
-            
-            /* أزرار الإجراءات */
-            .btn-small { display: block; width: 100%; margin-bottom: 5px; text-align: center; }
+        /* ===== Toast Notifications ===== */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .toast {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            padding: 14px 20px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            min-width: 280px;
+            max-width: 400px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+            border-right: 4px solid var(--info);
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .toast.success { border-right-color: var(--success); }
+        .toast.error { border-right-color: var(--danger); }
+        .toast.warning { border-right-color: var(--warning); }
+        .toast.info { border-right-color: var(--info); }
+        
+        .toast-icon {
+            font-size: 22px;
+        }
+        
+        .toast.fade-out {
+            animation: slideOut 0.3s ease forwards;
         }
 
+        /* ===== Loading Spinner ===== */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        .spinner.large {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            backdrop-filter: blur(4px);
+        }
+        
+        .loading-card {
+            background: var(--bg-card);
+            padding: 30px 40px;
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+            text-align: center;
+        }
+        
+        .loading-card p {
+            margin-top: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* ===== Skeleton ===== */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--border) 50%, var(--bg-secondary) 75%);
+            background-size: 200% 100%;
+            animation: skeleton 1.5s infinite;
+            border-radius: 8px;
+            min-height: 20px;
+        }
+
+        /* ===== Confirm Dialog ===== */
+        .confirm-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.2s;
+        }
+        
+        .confirm-dialog {
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+            max-width: 400px;
+            width: 90%;
+            animation: fadeInUp 0.3s;
+        }
+        
+        .confirm-dialog h3 {
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        
+        .confirm-dialog p {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .confirm-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .confirm-actions button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            font-family: 'Cairo', sans-serif;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .confirm-actions .btn-cancel {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        
+        .confirm-actions .btn-confirm {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .confirm-actions button:hover { transform: translateY(-2px); }
+
+        /* ===== Keyboard Shortcuts Hint ===== */
+        .kbd {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: monospace;
+            color: var(--text-primary);
+            margin: 0 2px;
+        }
+        
+        .shortcuts-hint {
+            background: var(--gradient-soft);
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        [data-theme="dark"] .shortcuts-hint {
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        /* ===== Review Card ===== */
+        .review-product-card {
+            background: var(--gradient-soft);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+        }
+        
+        [data-theme="dark"] .review-product-card {
+            background: rgba(99, 102, 241, 0.1);
+        }
+        
+        .review-product-card strong {
+            color: var(--text-primary);
+            font-size: 16px;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 6px;
+        }
+        
+        .review-product-card small {
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+        
+        .review-image-wrapper {
+            text-align: center;
+            margin-bottom: 16px;
+            background: var(--bg-secondary);
+            padding: 16px;
+            border-radius: 12px;
+        }
+        
+        .review-image-wrapper img {
+            max-width: 100%;
+            max-height: 280px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+        
+        .review-description {
+            background: var(--bg-card);
+            padding: 14px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            border-right: 4px solid var(--primary);
+            border: 1px solid var(--border);
+        }
+        
+        .review-description strong {
+            color: var(--text-primary);
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .review-description p {
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.7;
+            margin: 0;
+        }
+        
+        .amazon-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 16px;
+            padding: 10px 18px;
+            background: linear-gradient(135deg, #ff9900 0%, #ff6a00 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        
+        .amazon-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 153, 0, 0.3);
+        }
+        
+        .status-buttons-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 15px 0;
+        }
+        
+        .status-btn-modern {
+            padding: 14px 12px;
+            border: 2px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            cursor: pointer;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 13px;
+            font-family: 'Cairo', sans-serif;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .status-btn-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+        
+        .status-btn-modern.active {
+            border-width: 2px;
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .status-btn-modern.available.active {
+            background: var(--success);
+            border-color: var(--success);
+        }
+        
+        .status-btn-modern.limited.active {
+            background: var(--warning);
+            border-color: var(--warning);
+        }
+        
+        .status-btn-modern.unavailable.active {
+            background: var(--danger);
+            border-color: var(--danger);
+        }
+        
+        .status-btn-icon { font-size: 22px; }
+        
+        .review-actions {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* ===== Progress Bar ===== */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient);
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+
+        /* ===== Chart Container ===== */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .chart-container {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+        }
+        
+        .chart-container h3 {
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* ===== Filters Grid ===== */
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .filter-item label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+        
+        .filter-item input, .filter-item select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+        
+        .search-wrapper {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .search-wrapper input { flex: 1; }
+        
+        .clear-btn {
+            padding: 10px 12px;
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        /* ===== Pagination ===== */
+        .pagination {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .pagination button {
+            padding: 8px 16px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Cairo', sans-serif;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        
+        .pagination button:hover:not(:disabled) {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        .pagination button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        
+        .page-info {
+            font-weight: 700;
+            color: var(--text-primary);
+            min-width: 120px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        /* ===== Animations ===== */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            to { transform: translateX(-100%); opacity: 0; }
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        @keyframes skeleton {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ===== MOBILE RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            .login-container { margin: -12px; padding: 12px; }
+            .login-card { padding: 30px 22px; }
+            .login-title { font-size: 26px; }
+            
+            .app-header { padding: 14px; margin-bottom: 14px; }
+            .header-top { flex-direction: column; gap: 12px; align-items: stretch; }
+            .header-title h1 { font-size: 20px; text-align: center; }
+            .header-title p { text-align: center; }
+            .header-actions { justify-content: space-between; }
+            .user-section { flex: 1; }
+            
+            .content-card { padding: 18px; border-radius: 12px; }
+            h2 { font-size: 19px; }
+            
+            .tabs { gap: 4px; padding: 6px; }
+            .tab-btn { padding: 8px 12px; font-size: 12px; flex: 1; min-width: max-content; }
+            
+            .form-group input, .form-group textarea, .form-group select { font-size: 16px; padding: 12px; }
+            
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .stat-card { padding: 16px; }
+            .stat-num { font-size: 24px; }
+            .stat-label { font-size: 11px; }
+            .stat-icon { font-size: 22px; }
+            
+            .charts-grid { grid-template-columns: 1fr; }
+            
+            table { font-size: 11px; }
+            th, td { padding: 10px 8px; }
+            
+            .status-buttons-group { grid-template-columns: 1fr; }
+            .review-actions { grid-template-columns: 1fr; }
+            
+            .filters-grid { grid-template-columns: 1fr; }
+            
+            #toast-container { left: 12px; right: 12px; }
+            .toast { min-width: auto; }
+            
+            .shortcuts-hint { font-size: 11px; }
+        }
+        
         @media (max-width: 480px) {
             body { padding: 8px; }
-            .login-card { padding: 15px; }
-            .login-title { font-size: 20px; }
-            
-            .app-header { padding: 12px; }
-            .header-title h1 { font-size: 16px; }
-            .header-title p { font-size: 11px; }
-            .user-info { font-size: 12px; }
-            .logout-btn { padding: 6px 10px; font-size: 11px; }
-            
-            .content-card { padding: 12px; }
-            h2 { font-size: 16px; margin-bottom: 12px; }
-            
-            .tabs { gap: 4px; padding-left: 6px; }
-            .tab-btn { padding: 6px 10px; font-size: 11px; }
-            
-            .form-group { margin-bottom: 12px; }
-            .form-group label { font-size: 12px; margin-bottom: 4px; }
-            .form-group input, .form-group textarea, .form-group select { font-size: 14px; padding: 10px; }
-            .form-group textarea { min-height: 50px; }
-            
-            .btn-primary { padding: 10px; font-size: 13px; margin-top: 8px; }
-            
-            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
-            .stat-card { padding: 12px; }
-            .stat-num { font-size: 18px; }
-            .stat-label { font-size: 10px; margin-top: 6px; }
-            
-            table { font-size: 11px; margin: 15px 0; }
-            th, td { padding: 6px; }
-            
-            /* أزرار الحالة */
-            [data-status-btn] { padding: 8px 10px !important; margin: 2px 1px !important; font-size: 11px !important; }
-            
-            /* البحث */
-            [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
-            
-            /* أزرار الإجراءات */
-            .btn-small { display: block; width: 100%; margin-bottom: 4px; padding: 8px 6px; font-size: 10px; }
-            
-            /* overflow للجدول */
-            .content-card > table { width: 100vw; margin-right: -12px; }
-            .content-card { overflow-x: hidden; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .login-card { padding: 25px 18px; }
+            .content-card { padding: 14px; }
+            .tab-btn { padding: 7px 10px; font-size: 11px; }
+        }
+
+        /* ===== Print Styles ===== */
+        @media print {
+            body { background: white; padding: 0; }
+            .app-header, .tabs, .filter-section, button, .pagination, #toast-container { display: none !important; }
+            .content-card { box-shadow: none; border: none; }
+            .stats-grid { page-break-after: avoid; }
+            table { font-size: 11px; }
         }
     </style>
 </head>
 <body>
 
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
 <!-- LOGIN -->
 <div id="login" class="login-container">
     <div class="login-card">
         <div class="login-title">🏪 YAK Store</div>
-        <div style="text-align: center; color: #999; margin-bottom: 25px;">تسجيل الدخول</div>
+        <div class="login-subtitle">منصة احترافية لمراجعة منتجات أمازون</div>
         <div id="loginError" class="error-msg"></div>
-        <input type="text" id="username" class="input-field" placeholder="اسم المستخدم" autocomplete="off">
-        <input type="password" id="password" class="input-field" placeholder="كلمة المرور" autocomplete="off">
-        <button class="login-btn" onclick="login()">دخول</button>
+        <input type="text" id="username" class="input-field" placeholder="👤 اسم المستخدم" autocomplete="off">
+        <input type="password" id="password" class="input-field" placeholder="🔒 كلمة المرور" autocomplete="off">
+        <button class="login-btn" id="login-button" onclick="login()">
+            <span id="login-btn-text">دخول 🚀</span>
+        </button>
     </div>
 </div>
 
@@ -180,13 +1166,23 @@
     <div class="app-header">
         <div class="header-top">
             <div class="header-title">
-                <h1>🏪 YAK Store - مراجع منتجات أمازون</h1>
-                <p>نظام احترافي للمراجعة والتقارير</p>
+                <h1>🏪 YAK Store</h1>
+                <p>منصة مراجعة منتجات أمازون الاحترافية</p>
             </div>
-            <div class="user-section">
-                <div class="user-info">👤 <span id="username-display"></span></div>
-                <div class="user-info">🔑 <span id="role-display"></span></div>
-                <button class="logout-btn" onclick="logout()">تسجيل خروج</button>
+            <div class="header-actions">
+                <button class="theme-toggle" onclick="toggleTheme()" title="تبديل الوضع الليلي">
+                    <span id="theme-icon">🌙</span>
+                </button>
+                <div class="user-section">
+                    <div class="user-avatar" id="user-avatar">?</div>
+                    <div>
+                        <div class="user-info">
+                            <span id="username-display"></span>
+                            <small id="role-display"></small>
+                        </div>
+                    </div>
+                    <button class="logout-btn" onclick="logout()">خروج</button>
+                </div>
             </div>
         </div>
         <div class="tabs" id="tabs-container"></div>
@@ -258,67 +1254,96 @@
     <!-- RESULTS -->
     <div id="results" class="tab-content content-card">
         <h2>📊 النتائج والإحصائيات</h2>
+        
+        <!-- Stats Cards Enhanced -->
         <div class="stats-grid">
             <div class="stat-card">
+                <div class="stat-icon">📦</div>
                 <div class="stat-num" id="total">0</div>
-                <div class="stat-label">إجمالي</div>
+                <div class="stat-label">إجمالي المنتجات</div>
             </div>
             <div class="stat-card">
+                <div class="stat-icon">✅</div>
                 <div class="stat-num" id="reviewed">0</div>
-                <div class="stat-label">مراجع</div>
+                <div class="stat-label">تمت المراجعة</div>
             </div>
             <div class="stat-card">
+                <div class="stat-icon">🛒</div>
                 <div class="stat-num" id="purchased">0</div>
-                <div class="stat-label">مشتري</div>
+                <div class="stat-label">تم الشراء</div>
             </div>
             <div class="stat-card">
+                <div class="stat-icon">⏳</div>
                 <div class="stat-num" id="pending">0</div>
-                <div class="stat-label">بانتظار</div>
+                <div class="stat-label">في الانتظار</div>
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
-            <div>
-                <label style="display: block; font-weight: 600; color: #333; margin-bottom: 6px; font-size: 13px;">تصفية الحالة:</label>
-                <select id="status-filter" onchange="applyFilter()" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h3>📈 توزيع حالات المنتجات</h3>
+                <canvas id="chart-status" style="max-height: 250px;"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>🛒 الشراء الفعلي</h3>
+                <canvas id="chart-purchase" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-grid">
+            <div class="filter-item">
+                <label>🎯 تصفية الحالة:</label>
+                <select id="status-filter" onchange="applyFilter()">
                     <option value="">-- الكل --</option>
-                    <option value="متوفر بكثرة">✓ متوفر بكثرة</option>
+                    <option value="متوفر بكثرة">✅ متوفر بكثرة</option>
                     <option value="متوفر بقلة">⚠️ متوفر بقلة</option>
-                    <option value="غير متوفر">✗ غير متوفر</option>
-                    <option value="لم يراجع">لم يراجع</option>
+                    <option value="غير متوفر">❌ غير متوفر</option>
+                    <option value="لم يراجع">⏳ لم يراجع</option>
                 </select>
             </div>
-            <div>
-                <label style="display: block; font-weight: 600; color: #333; margin-bottom: 6px; font-size: 13px;">🔍 البحث بـ ASIN:</label>
-                <div style="display: flex; gap: 6px;">
-                    <input type="text" id="asin-search" placeholder="أدخل ASIN..." onkeyup="applyFilter()" style="flex: 1; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
-                    <button onclick="clearAsinSearch()" style="padding: 10px 12px; background: #f44336; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">✕</button>
+            <div class="filter-item">
+                <label>🔍 البحث بـ ASIN:</label>
+                <div class="search-wrapper">
+                    <input type="text" id="asin-search" placeholder="أدخل ASIN..." onkeyup="applyFilter()">
+                    <button class="clear-btn" onclick="clearAsinSearch()">✕</button>
                 </div>
             </div>
-            <div style="grid-column: 1;">
-                <label style="display: block; font-weight: 600; color: #333; margin-bottom: 6px; font-size: 13px;">عدد الصفوف:</label>
-                <select id="page-size" onchange="applyFilter()" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
+            <div class="filter-item">
+                <label>🔍 البحث بالاسم:</label>
+                <div class="search-wrapper">
+                    <input type="text" id="name-search" placeholder="ابحث عن الاسم..." onkeyup="applyFilter()">
+                    <button class="clear-btn" onclick="clearNameSearch()">✕</button>
+                </div>
+            </div>
+            <div class="filter-item">
+                <label>📊 عدد الصفوف:</label>
+                <select id="page-size" onchange="applyFilter()">
                     <option value="5">5 منتجات</option>
                     <option value="10" selected>10 منتجات</option>
                     <option value="20">20 منتج</option>
                     <option value="50">50 منتج</option>
+                    <option value="100">100 منتج</option>
                 </select>
             </div>
-            <div style="grid-column: 2;">
-                <label style="display: block; font-weight: 600; color: #333; margin-bottom: 6px; font-size: 13px;">🔍 البحث بـ الاسم:</label>
-                <div style="display: flex; gap: 6px;">
-                    <input type="text" id="name-search" placeholder="ابحث عن الاسم..." onkeyup="applyFilter()" style="flex: 1; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px;">
-                    <button onclick="clearNameSearch()" style="padding: 10px 12px; background: #f44336; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">✕</button>
-                </div>
+            <div class="filter-item">
+                <label>📅 من تاريخ:</label>
+                <input type="date" id="date-from" onchange="applyFilter()">
+            </div>
+            <div class="filter-item">
+                <label>📅 إلى تاريخ:</label>
+                <input type="date" id="date-to" onchange="applyFilter()">
             </div>
         </div>
 
         <div style="display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;">
-            <button class="btn-small" style="background: #4caf50;" onclick="downloadTemplate()">📥 تحميل قالب</button>
-            <button class="btn-small danger" onclick="deleteAllProducts()">🧹 حذف الكل</button>
+            <button class="btn-small success" onclick="downloadTemplate()">📥 تحميل قالب</button>
+            <button class="btn-small danger" onclick="deleteAllProductsConfirm()">🧹 حذف الكل</button>
+            <button class="btn-small" onclick="window.print()">🖨️ طباعة</button>
         </div>
 
-        <div style="overflow-x: auto;">
+        <div class="table-wrapper" style="overflow-x: auto;">
             <table>
                 <thead>
                     <tr>
@@ -334,15 +1359,17 @@
             </table>
         </div>
 
-        <div style="display: flex; gap: 10px; justify-content: center; align-items: center; margin: 20px 0; flex-wrap: wrap;">
-            <button style="padding: 8px 15px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" onclick="previousPage()">← السابق</button>
-            <span id="page-info" style="font-weight: 600; color: #333; min-width: 100px; text-align: center;">الصفحة 1</span>
-            <button style="padding: 8px 15px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" onclick="nextPage()">التالي →</button>
+        <div class="pagination">
+            <button onclick="previousPage()">← السابق</button>
+            <span class="page-info" id="page-info">الصفحة 1</span>
+            <button onclick="nextPage()">التالي →</button>
         </div>
 
-        <div style="display: flex; gap: 8px;">
-            <button class="btn-small" onclick="downloadExcel()" style="background: #4caf50; flex: 1;">📥 Excel</button>
-            <button class="btn-small" onclick="downloadCSV()" style="background: #2196F3; flex: 1;">📥 CSV</button>
+        <h3 style="margin-top: 20px;">📥 تصدير التقارير</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px;">
+            <button class="btn-small success" onclick="downloadExcel()">📊 Excel</button>
+            <button class="btn-small" onclick="downloadCSV()">📄 CSV</button>
+            <button class="btn-small danger" onclick="exportPDF()">📕 PDF</button>
         </div>
     </div>
 
@@ -374,23 +1401,28 @@
     let skippedProducts = new Set();  // المنتجات المتخطاة
 
     async function login() {
-        const username = document.getElementById('username').value;
+        const username = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value;
         const err = document.getElementById('loginError');
+        const loginBtn = document.getElementById('login-button');
+        const btnText = document.getElementById('login-btn-text');
 
         if (!username || !password) {
-            err.textContent = '⚠️ الرجاء إدخال البيانات';
+            err.textContent = '⚠️ يرجى إدخال اسم المستخدم وكلمة المرور';
+            err.classList.add('show');
             return;
         }
 
         try {
-            err.textContent = '⏳ جاري التحقق...';
-            console.log('🔐 محاولة الدخول...', { username, password });
+            // Loading state
+            err.classList.remove('show');
+            err.textContent = '';
+            loginBtn.disabled = true;
+            btnText.innerHTML = '<span class="spinner"></span> جاري التحقق...';
             
-            const url = '/api/auth/login';
-            console.log('📡 الطلب إلى:', url);
+            console.log('🔐 محاولة الدخول...', { username });
             
-            const res = await fetch(url, {
+            const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -400,17 +1432,19 @@
             });
 
             console.log('📊 Response status:', res.status);
-            console.log('📊 Response headers:', res.headers);
             
             if (!res.ok) {
                 const errorText = await res.text();
                 console.error('❌ خطأ HTTP:', res.status, errorText);
                 err.textContent = `❌ خطأ ${res.status}: ${errorText || 'فشل الدخول'}`;
+                err.classList.add('show');
+                loginBtn.disabled = false;
+                btnText.textContent = 'دخول 🚀';
                 return;
             }
             
             const result = await res.json();
-            console.log('✓ Response JSON:', result);
+            console.log('✓ Response:', result);
 
             if (result.success && result.token) {
                 console.log('✓ تم الدخول بنجاح!');
@@ -419,25 +1453,56 @@
                 localStorage.setItem('token', token);
                 localStorage.setItem('user', JSON.stringify(user));
                 
-                err.textContent = ''; // مسح الخطأ
-                await showApp();  // انتظر حتى تنتهي showApp
-                console.log('✓ تم تحميل التطبيق!');
+                btnText.innerHTML = '✓ تم بنجاح!';
+                showToast('success', `أهلاً بك ${user.username}! 👋`);
+                
+                await showApp();
             } else {
-                console.error('❌ خطأ:', result.error);
                 err.textContent = '❌ ' + (result.error || 'بيانات غير صحيحة!');
+                err.classList.add('show');
+                loginBtn.disabled = false;
+                btnText.textContent = 'دخول 🚀';
             }
         } catch (error) {
             console.error('❌ خطأ في الاتصال:', error);
             err.textContent = '❌ خطأ في الاتصال: ' + error.message;
+            err.classList.add('show');
+            loginBtn.disabled = false;
+            btnText.textContent = 'دخول 🚀';
         }
     }
 
     function logout() {
-        token = null;
-        user = null;
-        localStorage.clear();
-        location.reload();
+        showConfirm(
+            '🚪 تسجيل خروج',
+            'هل أنت متأكد من رغبتك في تسجيل الخروج؟',
+            () => {
+                token = null;
+                user = null;
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                location.reload();
+            }
+        );
     }
+
+    // إضافة دعم Enter في حقل كلمة المرور للدخول
+    document.addEventListener('DOMContentLoaded', () => {
+        const passwordField = document.getElementById('password');
+        if (passwordField) {
+            passwordField.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') login();
+            });
+        }
+        const usernameField = document.getElementById('username');
+        if (usernameField) {
+            usernameField.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('password').focus();
+                }
+            });
+        }
+    });
 
     async function showApp() {
         console.log('🚀 showApp starting...');
@@ -451,6 +1516,9 @@
             document.getElementById('username-display').textContent = user.username;
             const roles = { admin: 'مسؤول', editor: 'محرر', reviewer: 'مراجع' };
             document.getElementById('role-display').textContent = roles[user.role] || user.role;
+            
+            // تحديث الـ avatar
+            updateUserAvatar();
 
             // 3. بناء التبويبات
             buildTabs();
@@ -465,7 +1533,7 @@
             console.log('✅ App ready!');
         } catch (error) {
             console.error('❌ Error in showApp:', error);
-            alert('خطأ في تحميل التطبيق: ' + error.message);
+            showToast('error', 'خطأ في تحميل التطبيق: ' + error.message);
         }
     }
 
@@ -544,16 +1612,16 @@
     }
 
     async function addProduct() {
-        const link = document.getElementById('link').value;
-        const name = document.getElementById('name').value;
+        const link = document.getElementById('link').value.trim();
+        const name = document.getElementById('name').value.trim();
 
         if (!link || !name) {
-            alert('الرابط والاسم مطلوبان!');
+            showToast('warning', '⚠️ الرابط والاسم مطلوبان!');
             return;
         }
 
         try {
-            await fetch('/api/products', {
+            const res = await fetch('/api/products', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -571,26 +1639,22 @@
                 })
             });
 
-            const msg = document.getElementById('add-msg');
-            msg.textContent = '✓ تم الإضافة!';
-            msg.className = 'message msg-success';
-            msg.classList.remove('hidden');
-
-            document.getElementById('link').value = '';
-            document.getElementById('name').value = '';
-            document.getElementById('asin').value = '';
-            document.getElementById('brand').value = '';
-            document.getElementById('price').value = '';
-            document.getElementById('category').value = '';
-            document.getElementById('imageUrl').value = '';
-            document.getElementById('description').value = '';
-            document.getElementById('notes').value = '';
-            loadData();
+            if (res.ok) {
+                showToast('success', '✓ تم إضافة المنتج بنجاح!');
+                
+                // مسح الحقول
+                ['link', 'name', 'asin', 'brand', 'price', 'category', 'imageUrl', 'description', 'notes'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
+                
+                await loadData();
+            } else {
+                showToast('error', '❌ فشل في إضافة المنتج');
+            }
         } catch (error) {
-            const msg = document.getElementById('add-msg');
-            msg.textContent = '❌ خطأ!';
-            msg.className = 'message msg-error';
-            msg.classList.remove('hidden');
+            console.error('Error:', error);
+            showToast('error', '❌ خطأ: ' + error.message);
         }
     }
 
@@ -623,15 +1687,16 @@
         const file = document.getElementById('excel-file').files[0];
         if (!file) return;
 
+        showLoading('جاري معالجة الملف...');
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
                 const wb = XLSX.read(e.target.result, { type: 'array' });
-                const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+                const sheet_data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
 
                 const products = [];
-                for (let i = 1; i < data.length; i++) {
-                    const row = data[i];
+                for (let i = 1; i < sheet_data.length; i++) {
+                    const row = sheet_data[i];
                     if (row[0] && row[1]) {
                         products.push({
                             link: row[0],
@@ -647,7 +1712,13 @@
                     }
                 }
 
-                await fetch('/api/products/bulk', {
+                if (products.length === 0) {
+                    hideLoading();
+                    showToast('warning', '⚠️ الملف فارغ أو غير صحيح!');
+                    return;
+                }
+
+                const res = await fetch('/api/products/bulk', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -656,10 +1727,18 @@
                     body: JSON.stringify({ products })
                 });
 
-                alert(`✓ تم رفع ${products.length} منتج!`);
-                loadData();
+                hideLoading();
+                if (res.ok) {
+                    showToast('success', `✓ تم رفع ${products.length} منتج بنجاح!`);
+                    document.getElementById('excel-file').value = '';
+                    await loadData();
+                } else {
+                    showToast('error', '❌ فشل في رفع الملف');
+                }
             } catch (error) {
-                alert('❌ خطأ!');
+                hideLoading();
+                console.error('Upload error:', error);
+                showToast('error', '❌ خطأ: ' + error.message);
             }
         };
         reader.readAsArrayBuffer(file);
@@ -674,76 +1753,256 @@
         const content = document.getElementById('review-content');
 
         if (!pending) {
-            // لو جميع المنتجات تم تخطيها أو مراجعتها
             if (skippedProducts.size > 0) {
                 content.innerHTML = `
-                    <p style="text-align: center; color: #999; padding: 20px;">
-                        ✓ تمت مراجعة أو تخطي جميع المنتجات!<br>
-                        <small>تم تخطي ${skippedProducts.size} منتج</small>
-                    </p>
-                    <button class="btn-primary" onclick="resetSkipped()" style="margin: 10px auto; display: block;">🔄 إعادة عرض المتخطاة</button>
+                    <div style="text-align: center; padding: 40px 20px;">
+                        <div style="font-size: 60px; margin-bottom: 16px;">🎉</div>
+                        <h3 style="color: var(--success); margin-bottom: 8px;">تمت مراجعة جميع المنتجات!</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                            تم تخطي <strong style="color: var(--warning);">${skippedProducts.size}</strong> منتج
+                        </p>
+                        <button class="btn-primary" onclick="resetSkipped()" style="max-width: 280px; margin: 0 auto;">
+                            🔄 إعادة عرض المتخطاة
+                        </button>
+                    </div>
                 `;
             } else {
-                content.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">✓ تمت مراجعة جميع المنتجات!</p>';
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <div style="font-size: 80px; margin-bottom: 16px;">✅</div>
+                        <h3 style="color: var(--success); margin-bottom: 8px;">رائع! تمت مراجعة جميع المنتجات</h3>
+                        <p style="color: var(--text-secondary);">لا توجد منتجات في انتظار المراجعة حالياً</p>
+                    </div>
+                `;
             }
             return;
         }
 
         console.log('pending product:', pending);
         const reviewed = Object.keys(data.reviews).length;
+        const totalProducts = data.products.length;
+        const progressPercent = Math.round((reviewed / totalProducts) * 100);
+        
         content.innerHTML = `
-            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <strong>${pending.name}</strong><br>
-                <small style="color: #999;">المراجعة ${reviewed + 1} من ${data.products.length}</small>
+            <!-- Shortcuts Hint -->
+            <div class="shortcuts-hint">
+                <strong>⚡ اختصارات سريعة:</strong>
+                <span><span class="kbd">1</span> متوفر</span>
+                <span><span class="kbd">2</span> محدود</span>
+                <span><span class="kbd">3</span> غير متوفر</span>
+                <span><span class="kbd">Enter</span> حفظ</span>
+                <span><span class="kbd">Esc</span> تخطي</span>
+            </div>
+
+            <!-- Progress -->
+            <div style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary);">
+                    <span>التقدم: <strong style="color: var(--primary);">${reviewed}</strong> من <strong>${totalProducts}</strong></span>
+                    <span><strong>${progressPercent}%</strong></span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${progressPercent}%"></div>
+                </div>
+            </div>
+
+            <!-- Product Info -->
+            <div class="review-product-card">
+                <strong>${pending.name}</strong>
+                <small>
+                    ${pending.asin ? `🏷️ ASIN: <strong>${pending.asin}</strong> | ` : ''}
+                    ${pending.brand ? `🏪 ${pending.brand} | ` : ''}
+                    ${pending.price ? `💰 ${pending.price}` : ''}
+                </small>
             </div>
 
             ${pending.imageUrl ? `
-                <div style="margin-bottom: 15px; text-align: center;">
-                    <img src="${pending.imageUrl}" alt="${pending.name}" style="max-width: 100%; max-height: 300px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <div class="review-image-wrapper">
+                    <img src="${pending.imageUrl}" alt="${pending.name}" loading="lazy">
                 </div>
             ` : ''}
 
             ${pending.description ? `
-                <div style="background: white; padding: 12px; border-radius: 8px; margin-bottom: 15px; border-right: 4px solid #667eea;">
-                    <strong style="color: #333; display: block; margin-bottom: 8px;">📝 وصف المنتج:</strong>
-                    <p style="color: #666; font-size: 13px; line-height: 1.6; margin: 0;">${pending.description}</p>
+                <div class="review-description">
+                    <strong>📝 وصف المنتج:</strong>
+                    <p>${pending.description}</p>
                 </div>
             ` : ''}
 
-            <a href="${pending.link}" target="_blank" style="display: inline-block; margin-bottom: 15px; padding: 10px 15px; background: #ff9800; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">🔗 فتح على أمازون</a>
+            <a href="${pending.link}" target="_blank" class="amazon-link">
+                🔗 فتح على أمازون
+            </a>
             
-            <div style="margin: 20px 0;">
-                <label style="display: block; margin-bottom: 10px; font-weight: 600;">الحالة:</label>
-                <button data-status-btn onclick="selectStatus('متوفر بكثرة')" style="padding: 12px 16px; margin: 5px; border: 2px solid #4caf50; background: white; cursor: pointer; border-radius: 6px; font-weight: 600; transition: all 0.3s;">✓ متوفر</button>
-                <button data-status-btn onclick="selectStatus('متوفر بقلة')" style="padding: 12px 16px; margin: 5px; border: 2px solid #ff9800; background: white; cursor: pointer; border-radius: 6px; font-weight: 600; transition: all 0.3s;">⚠️ محدود</button>
-                <button data-status-btn onclick="selectStatus('غير متوفر')" style="padding: 12px 16px; margin: 5px; border: 2px solid #f44336; background: white; cursor: pointer; border-radius: 6px; font-weight: 600; transition: all 0.3s;">✗ غير متوفر</button>
+            <!-- Status Buttons -->
+            <div>
+                <label style="display: block; margin-bottom: 10px; font-weight: 700; color: var(--text-primary); font-size: 14px;">
+                    🎯 اختر الحالة:
+                </label>
+                <div class="status-buttons-group">
+                    <button class="status-btn-modern available" data-status-btn data-status-val="available" onclick="selectStatusModern('متوفر بكثرة', 'available')">
+                        <span class="status-btn-icon">✅</span>
+                        <span>متوفر</span>
+                    </button>
+                    <button class="status-btn-modern limited" data-status-btn data-status-val="limited" onclick="selectStatusModern('متوفر بقلة', 'limited')">
+                        <span class="status-btn-icon">⚠️</span>
+                        <span>محدود</span>
+                    </button>
+                    <button class="status-btn-modern unavailable" data-status-btn data-status-val="unavailable" onclick="selectStatusModern('غير متوفر', 'unavailable')">
+                        <span class="status-btn-icon">❌</span>
+                        <span>غير متوفر</span>
+                    </button>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>اسم المورد</label>
-                <input type="text" id="supplier" placeholder="أمازون مصر...">
+            <div class="form-group" style="margin-top: 16px;">
+                <label>🏪 اسم المورد</label>
+                <input type="text" id="supplier" placeholder="مثلاً: أمازون مصر">
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 <div class="form-group">
-                    <label>سعر الشراء</label>
+                    <label>💵 سعر الشراء</label>
                     <input type="number" id="purchase-price" placeholder="0" step="0.01">
                 </div>
                 <div class="form-group">
-                    <label>الكمية</label>
+                    <label>📦 الكمية</label>
                     <input type="number" id="quantity" placeholder="0" min="0">
                 </div>
             </div>
             <div class="form-group">
-                <label><input type="checkbox" id="purchased"> تم الشراء</label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="purchased" style="width: 18px; height: 18px; cursor: pointer;"> 
+                    <span>✓ تم الشراء فعلياً</span>
+                </label>
             </div>
             <div class="form-group">
-                <label>ملاحظات</label>
-                <textarea id="review-notes" placeholder="ملاحظات..."></textarea>
+                <label>📝 ملاحظات</label>
+                <textarea id="review-notes" placeholder="ملاحظات إضافية..."></textarea>
             </div>
 
-            <button class="btn-primary" onclick="saveReview('${pending.id}')">✓ حفظ والتالي</button>
-            <button class="btn-primary btn-secondary" style="margin-top: 5px;" onclick="skipReview()">⏭️ تخطي</button>
+            <!-- Auto-save indicator -->
+            <div id="autosave-indicator" style="font-size: 11px; color: var(--text-muted); text-align: left; margin-bottom: 8px; min-height: 16px;"></div>
+
+            <div class="review-actions">
+                <button class="btn-primary" onclick="saveReview('${pending.id}')">
+                    <span id="save-btn-text">✓ حفظ والتالي</span>
+                </button>
+                <button class="btn-primary btn-secondary" onclick="skipReview()">⏭️ تخطي</button>
+            </div>
         `;
+        
+        // إعداد auto-save
+        setupAutoSave(pending.id);
+    }
+
+    // ===== Auto-save =====
+    let autoSaveTimer = null;
+    
+    function setupAutoSave(productId) {
+        // مسح الـ timer السابق
+        if (autoSaveTimer) clearInterval(autoSaveTimer);
+        
+        // تحميل البيانات المحفوظة سابقاً (لو وجدت)
+        loadDraft(productId);
+        
+        // إضافة listener لكل الحقول
+        const fields = ['supplier', 'purchase-price', 'quantity', 'review-notes'];
+        fields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', () => saveDraft(productId));
+            }
+        });
+        
+        const purchasedEl = document.getElementById('purchased');
+        if (purchasedEl) {
+            purchasedEl.addEventListener('change', () => saveDraft(productId));
+        }
+    }
+    
+    function saveDraft(productId) {
+        const draft = {
+            status: selectedStatus,
+            supplier: document.getElementById('supplier')?.value || '',
+            purchasePrice: document.getElementById('purchase-price')?.value || '',
+            quantity: document.getElementById('quantity')?.value || '',
+            purchased: document.getElementById('purchased')?.checked || false,
+            notes: document.getElementById('review-notes')?.value || '',
+            savedAt: new Date().toISOString()
+        };
+        
+        localStorage.setItem(`draft_${productId}`, JSON.stringify(draft));
+        
+        const indicator = document.getElementById('autosave-indicator');
+        if (indicator) {
+            indicator.textContent = '💾 تم الحفظ التلقائي';
+            indicator.style.color = 'var(--success)';
+            setTimeout(() => {
+                if (indicator) indicator.textContent = '';
+            }, 2000);
+        }
+    }
+    
+    function loadDraft(productId) {
+        const draft = localStorage.getItem(`draft_${productId}`);
+        if (!draft) return;
+        
+        try {
+            const data = JSON.parse(draft);
+            
+            if (data.supplier) document.getElementById('supplier').value = data.supplier;
+            if (data.purchasePrice) document.getElementById('purchase-price').value = data.purchasePrice;
+            if (data.quantity) document.getElementById('quantity').value = data.quantity;
+            if (data.purchased) document.getElementById('purchased').checked = data.purchased;
+            if (data.notes) document.getElementById('review-notes').value = data.notes;
+            
+            if (data.status) {
+                selectedStatus = data.status;
+                // تحديد الزر المناسب
+                const statusMap = {
+                    'متوفر بكثرة': 'available',
+                    'متوفر بقلة': 'limited',
+                    'غير متوفر': 'unavailable'
+                };
+                const statusKey = statusMap[data.status];
+                if (statusKey) {
+                    setTimeout(() => {
+                        const btn = document.querySelector(`[data-status-val="${statusKey}"]`);
+                        if (btn) btn.classList.add('active');
+                    }, 100);
+                }
+            }
+            
+            const indicator = document.getElementById('autosave-indicator');
+            if (indicator) {
+                indicator.textContent = '📂 تم استرجاع المسودة المحفوظة';
+                indicator.style.color = 'var(--info)';
+                setTimeout(() => {
+                    if (indicator) indicator.textContent = '';
+                }, 3000);
+            }
+        } catch (e) {
+            console.error('Error loading draft:', e);
+        }
+    }
+    
+    function clearDraft(productId) {
+        localStorage.removeItem(`draft_${productId}`);
+    }
+    
+    function selectStatusModern(status, key) {
+        selectedStatus = status;
+        
+        // إزالة active من كل الأزرار
+        document.querySelectorAll('[data-status-btn]').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // تفعيل الزر الحالي
+        const btn = document.querySelector(`[data-status-val="${key}"]`);
+        if (btn) btn.classList.add('active');
+        
+        // حفظ المسودة
+        const pending = data.products?.find(p => !data.reviews[p.id] && !skippedProducts.has(p.id));
+        if (pending) saveDraft(pending.id);
     }
 
     function skipReview() {
@@ -805,11 +2064,18 @@
 
     async function saveReview(id) {
         if (!selectedStatus) {
-            alert('اختر الحالة!');
+            showToast('warning', 'يجب اختيار حالة المنتج أولاً!');
             return;
         }
 
+        const saveBtn = document.querySelector('button[onclick*="saveReview"]');
+        const btnText = document.getElementById('save-btn-text');
+        
         try {
+            // Loading state
+            if (saveBtn) saveBtn.disabled = true;
+            if (btnText) btnText.innerHTML = '<span class="spinner"></span> جاري الحفظ...';
+            
             const response = await fetch(`/api/reviews/${id}`, {
                 method: 'POST',
                 headers: {
@@ -827,16 +2093,25 @@
             });
 
             if (response.ok) {
+                // مسح الـ draft للمنتج
+                clearDraft(id);
+                
+                showToast('success', '✓ تم حفظ المراجعة بنجاح!');
                 selectedStatus = null;
+                
                 // تحميل البيانات الجديدة وعرض المنتج التالي
                 await loadData();
-                showReview(); // عرض المنتج التالي مباشرة
+                showReview();
             } else {
-                alert('❌ خطأ في الحفظ!');
+                showToast('error', '❌ خطأ في الحفظ!');
+                if (saveBtn) saveBtn.disabled = false;
+                if (btnText) btnText.textContent = '✓ حفظ والتالي';
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('❌ خطأ في الاتصال!');
+            showToast('error', '❌ خطأ في الاتصال: ' + error.message);
+            if (saveBtn) saveBtn.disabled = false;
+            if (btnText) btnText.textContent = '✓ حفظ والتالي';
         }
     }
 
@@ -844,18 +2119,50 @@
         const reviewed = Object.keys(data.reviews).length;
         const purchased_count = Object.values(data.reviews).filter(r => r.purchased).length;
 
-        document.getElementById('total').textContent = data.products.length;
-        document.getElementById('reviewed').textContent = reviewed;
-        document.getElementById('purchased').textContent = purchased_count;
-        document.getElementById('pending').textContent = data.products.length - reviewed;
+        // Animate numbers
+        animateNumber('total', data.products.length);
+        animateNumber('reviewed', reviewed);
+        animateNumber('purchased', purchased_count);
+        animateNumber('pending', data.products.length - reviewed);
 
         applyFilter();
+        
+        // رسم الـ charts بعد قليل للتأكد من ظهور الـ canvas
+        setTimeout(() => {
+            try { renderCharts(); } catch (e) { console.error('Charts error:', e); }
+        }, 100);
+    }
+    
+    function animateNumber(elementId, target) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        
+        const current = parseInt(el.textContent) || 0;
+        const duration = 600;
+        const steps = 30;
+        const increment = (target - current) / steps;
+        let step = 0;
+        
+        const timer = setInterval(() => {
+            step++;
+            const value = Math.round(current + (increment * step));
+            el.textContent = value;
+            
+            if (step >= steps) {
+                clearInterval(timer);
+                el.textContent = target;
+            }
+        }, duration / steps);
     }
 
     function applyFilter() {
         const statusFilter = document.getElementById('status-filter').value;
         const asinSearch = document.getElementById('asin-search').value.toLowerCase().trim();
         const nameSearch = document.getElementById('name-search').value.toLowerCase().trim();
+        const dateFromEl = document.getElementById('date-from');
+        const dateToEl = document.getElementById('date-to');
+        const dateFrom = dateFromEl ? dateFromEl.value : '';
+        const dateTo = dateToEl ? dateToEl.value : '';
         pageSize = parseInt(document.getElementById('page-size').value) || 10;
         
         filteredProducts = data.products.filter(p => {
@@ -882,11 +2189,56 @@
                 passesNameFilter = (p.name || '').toLowerCase().includes(nameSearch);
             }
             
-            return passesStatusFilter && passesAsinFilter && passesNameFilter;
+            // فيلتر التاريخ
+            let passesDateFilter = true;
+            if (dateFrom || dateTo) {
+                const productDate = p.addedAt ? p.addedAt.split('T')[0] : '';
+                if (productDate) {
+                    if (dateFrom && productDate < dateFrom) passesDateFilter = false;
+                    if (dateTo && productDate > dateTo) passesDateFilter = false;
+                } else {
+                    passesDateFilter = !dateFrom && !dateTo;
+                }
+            }
+            
+            return passesStatusFilter && passesAsinFilter && passesNameFilter && passesDateFilter;
         });
 
         currentPage = 1;
         displayResults();
+        
+        // تحديث الـ charts
+        if (typeof renderCharts === 'function') {
+            try { renderCharts(); } catch (e) { console.error('Charts error:', e); }
+        }
+    }
+    
+    // ===== Delete All with Confirm =====
+    function deleteAllProductsConfirm() {
+        showConfirm(
+            '⚠️ حذف جميع المنتجات',
+            'هل أنت متأكد من حذف جميع المنتجات والمراجعات؟ لا يمكن التراجع عن هذا الإجراء!',
+            async () => {
+                try {
+                    showLoading('جاري الحذف...');
+                    const res = await fetch('/api/all', {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    hideLoading();
+                    if (res.ok) {
+                        showToast('success', '✓ تم حذف جميع البيانات!');
+                        await loadData();
+                        showResults();
+                    } else {
+                        showToast('error', '❌ فشل الحذف');
+                    }
+                } catch (error) {
+                    hideLoading();
+                    showToast('error', 'خطأ: ' + error.message);
+                }
+            }
+        );
     }
 
     function clearAsinSearch() {
@@ -1017,57 +2369,56 @@
 
     // Action functions
     async function deleteProduct(id) {
-        if (!confirm('تأكيد حذف هذا المنتج؟')) return;
-        
-        try {
-            await fetch(`/api/products/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            alert('✓ تم الحذف!');
-            await loadData();
-            showResults();
-        } catch (error) {
-            alert('❌ خطأ!');
-        }
+        showConfirm(
+            '🗑️ حذف منتج',
+            'هل أنت متأكد من حذف هذا المنتج؟',
+            async () => {
+                try {
+                    await fetch(`/api/products/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    showToast('success', '✓ تم حذف المنتج!');
+                    await loadData();
+                    showResults();
+                } catch (error) {
+                    showToast('error', '❌ خطأ في الحذف');
+                }
+            }
+        );
     }
 
     async function deleteAllProducts() {
-        if (!confirm('تحذير: سيتم حذف جميع المنتجات!\n\nهل أنت متأكد؟')) return;
-        if (!confirm('هذا الإجراء لا يمكن التراجع عنه!\n\nهل أنت متأكد فعلاً؟')) return;
-        
-        try {
-            await fetch('/api/all', {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            alert('✓ تم حذف جميع المنتجات!');
-            await loadData();
-            showResults();
-        } catch (error) {
-            alert('❌ خطأ!');
-        }
+        // الدالة القديمة - استخدم deleteAllProductsConfirm بدلاً منها
+        deleteAllProductsConfirm();
     }
 
     async function resetReview(id) {
-        if (!confirm('إعادة مراجعة هذا المنتج؟')) return;
-        
-        try {
-            await fetch(`/api/reviews/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            alert('✓ تمت الإعادة!');
-            await loadData();
-            showResults();
-        } catch (error) {
-            alert('❌ خطأ!');
-        }
+        showConfirm(
+            '🔄 إعادة المراجعة',
+            'هل تريد إعادة مراجعة هذا المنتج؟ سيتم حذف المراجعة الحالية.',
+            async () => {
+                try {
+                    await fetch(`/api/reviews/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    showToast('success', '✓ تمت إعادة المنتج للمراجعة!');
+                    await loadData();
+                    showResults();
+                } catch (error) {
+                    showToast('error', '❌ خطأ!');
+                }
+            }
+        );
     }
 
     async function duplicateProduct(id) {
         const product = data.products.find(p => p.id == id);
-        if (!product) return;
+        if (!product) {
+            showToast('error', '❌ لم يتم العثور على المنتج');
+            return;
+        }
         
         try {
             await fetch('/api/products', {
@@ -1081,11 +2432,11 @@
                     name: `${product.name} (نسخة)`
                 })
             });
-            alert('✓ تم نسخ المنتج!');
+            showToast('success', '✓ تم نسخ المنتج!');
             await loadData();
             showResults();
         } catch (error) {
-            alert('❌ خطأ!');
+            showToast('error', '❌ خطأ في النسخ');
         }
     }
 
@@ -1125,12 +2476,12 @@
     }
 
     async function createUser() {
-        const username = document.getElementById('new-username').value;
+        const username = document.getElementById('new-username').value.trim();
         const password = document.getElementById('new-password').value;
         const role = document.getElementById('new-role').value;
 
         if (!username || !password) {
-            alert('الاسم وكلمة المرور مطلوبان!');
+            showToast('warning', '⚠️ الاسم وكلمة المرور مطلوبان!');
             return;
         }
 
@@ -1144,17 +2495,17 @@
                 body: JSON.stringify({ username, password, role })
             });
 
-            alert('✓ تم الإضافة!');
+            showToast('success', '✓ تم إضافة المستخدم بنجاح!');
             document.getElementById('new-username').value = '';
             document.getElementById('new-password').value = '';
             showSettings();
         } catch (error) {
-            alert('❌ خطأ!');
+            showToast('error', '❌ خطأ في الإضافة');
         }
     }
 
     function editUser(id) {
-        const password = prompt('كلمة المرور الجديدة:');
+        const password = prompt('🔑 كلمة المرور الجديدة:');
         if (password) {
             fetch(`/api/admin/users/${id}`, {
                 method: 'PUT',
@@ -1164,25 +2515,368 @@
                 },
                 body: JSON.stringify({ password })
             }).then(() => {
-                alert('✓ تم التحديث!');
+                showToast('success', '✓ تم تحديث كلمة المرور!');
                 showSettings();
+            }).catch(() => {
+                showToast('error', '❌ فشل التحديث');
             });
         }
     }
 
     async function deleteUser(id) {
-        if (!confirm('تأكيد الحذف؟')) return;
-        await fetch(`/api/admin/users/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
+        showConfirm(
+            '🗑️ حذف مستخدم',
+            'هل أنت متأكد من حذف هذا المستخدم؟',
+            async () => {
+                try {
+                    await fetch(`/api/admin/users/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    showToast('success', '✓ تم حذف المستخدم!');
+                    showSettings();
+                } catch (error) {
+                    showToast('error', '❌ فشل الحذف');
+                }
+            }
+        );
+    }
+
+    // ============================================
+    // ✨ HELPER FUNCTIONS (Modern UI)
+    // ============================================
+    
+    // ===== TOAST NOTIFICATIONS =====
+    function showToast(type = 'info', message, duration = 3000) {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        
+        const icons = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+        
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `
+            <span class="toast-icon">${icons[type] || icons.info}</span>
+            <span class="toast-message">${message}</span>
+        `;
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('fade-out');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+    
+    // ===== CONFIRM DIALOG =====
+    function showConfirm(title, message, onConfirm) {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML = `
+            <div class="confirm-dialog">
+                <h3>${title}</h3>
+                <p>${message}</p>
+                <div class="confirm-actions">
+                    <button class="btn-cancel" onclick="this.closest('.confirm-overlay').remove()">إلغاء</button>
+                    <button class="btn-confirm" id="confirm-yes-btn">تأكيد</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(overlay);
+        
+        document.getElementById('confirm-yes-btn').onclick = () => {
+            overlay.remove();
+            if (onConfirm) onConfirm();
+        };
+        
+        overlay.onclick = (e) => {
+            if (e.target === overlay) overlay.remove();
+        };
+    }
+    
+    // ===== THEME TOGGLE =====
+    function toggleTheme() {
+        const html = document.documentElement;
+        const currentTheme = html.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        html.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        
+        const icon = document.getElementById('theme-icon');
+        if (icon) icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        
+        showToast('info', `تم التبديل إلى الوضع ${newTheme === 'dark' ? 'الليلي 🌙' : 'النهاري ☀️'}`, 2000);
+    }
+    
+    function loadTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        const icon = document.getElementById('theme-icon');
+        if (icon) icon.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+    }
+    
+    // ===== LOADING OVERLAY =====
+    function showLoading(message = 'جاري التحميل...') {
+        const existing = document.getElementById('loading-overlay-elem');
+        if (existing) existing.remove();
+        
+        const overlay = document.createElement('div');
+        overlay.id = 'loading-overlay-elem';
+        overlay.className = 'loading-overlay';
+        overlay.innerHTML = `
+            <div class="loading-card">
+                <div class="spinner large"></div>
+                <p>${message}</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+    
+    function hideLoading() {
+        const overlay = document.getElementById('loading-overlay-elem');
+        if (overlay) overlay.remove();
+    }
+    
+    // ===== KEYBOARD SHORTCUTS =====
+    document.addEventListener('keydown', (e) => {
+        // فقط في صفحة المراجعة
+        const reviewTab = document.getElementById('review');
+        if (!reviewTab || !reviewTab.classList.contains('active')) return;
+        
+        // تجاهل إذا كان المستخدم يكتب في input/textarea
+        const isInputFocused = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+        
+        // Esc = تخطي
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            if (typeof skipReview === 'function') skipReview();
+            return;
+        }
+        
+        // Enter = حفظ (فقط من خارج textarea)
+        if (e.key === 'Enter' && document.activeElement?.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            const pending = data.products?.find(p => !data.reviews[p.id] && !skippedProducts.has(p.id));
+            if (pending && selectedStatus) saveReview(pending.id);
+            return;
+        }
+        
+        // 1, 2, 3 لاختيار الحالة (فقط لو مش في input)
+        if (!isInputFocused) {
+            if (e.key === '1') {
+                e.preventDefault();
+                selectStatusModern('متوفر بكثرة', 'available');
+            } else if (e.key === '2') {
+                e.preventDefault();
+                selectStatusModern('متوفر بقلة', 'limited');
+            } else if (e.key === '3') {
+                e.preventDefault();
+                selectStatusModern('غير متوفر', 'unavailable');
+            }
+        }
+    });
+    
+    // ===== UPDATE USER AVATAR =====
+    function updateUserAvatar() {
+        const avatar = document.getElementById('user-avatar');
+        if (avatar && user && user.username) {
+            avatar.textContent = user.username.charAt(0).toUpperCase();
+        }
+    }
+    
+    // ===== FORMAT DATE (Arabic) =====
+    function formatDate(isoDate) {
+        if (!isoDate) return '-';
+        try {
+            const d = new Date(isoDate);
+            return d.toLocaleDateString('ar-EG', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch (e) {
+            return isoDate;
+        }
+    }
+    
+    function formatDateTime(isoDate) {
+        if (!isoDate) return '-';
+        try {
+            const d = new Date(isoDate);
+            return d.toLocaleString('ar-EG', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return isoDate;
+        }
+    }
+
+    // ===== EXPORT PDF =====
+    async function exportPDF() {
+        try {
+            showLoading('جاري إنشاء تقرير PDF...');
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // إضافة العنوان
+            doc.setFontSize(18);
+            doc.text('YAK Store - Products Report', 105, 15, { align: 'center' });
+            
+            doc.setFontSize(10);
+            const today = new Date().toLocaleDateString('ar-EG');
+            doc.text(`Date: ${today}`, 14, 25);
+            doc.text(`Reviewer: ${user?.username || ''}`, 14, 32);
+            
+            // إحصائيات
+            const reviewed = Object.keys(data.reviews).length;
+            const purchased = Object.values(data.reviews).filter(r => r.purchased).length;
+            
+            doc.setFontSize(12);
+            doc.text(`Total Products: ${data.products.length}`, 14, 45);
+            doc.text(`Reviewed: ${reviewed}`, 14, 52);
+            doc.text(`Purchased: ${purchased}`, 14, 59);
+            doc.text(`Pending: ${data.products.length - reviewed}`, 14, 66);
+            
+            // جدول
+            let y = 80;
+            doc.setFontSize(10);
+            doc.text('Products List:', 14, y);
+            y += 8;
+            
+            data.products.slice(0, 30).forEach((p, i) => {
+                if (y > 270) {
+                    doc.addPage();
+                    y = 20;
+                }
+                const r = data.reviews[p.id];
+                const status = r ? r.status : 'Not reviewed';
+                doc.text(`${i + 1}. ${p.name.substring(0, 50)} - ${status}`, 14, y);
+                y += 6;
+            });
+            
+            doc.save(`YAK_Store_Report_${Date.now()}.pdf`);
+            
+            hideLoading();
+            showToast('success', '✓ تم تحميل تقرير PDF بنجاح!');
+        } catch (error) {
+            hideLoading();
+            showToast('error', 'خطأ في إنشاء PDF: ' + error.message);
+            console.error('PDF error:', error);
+        }
+    }
+
+    // ===== RENDER CHARTS =====
+    let chartsInstances = {};
+    
+    function renderCharts() {
+        const reviewed = Object.keys(data.reviews).length;
+        const purchased = Object.values(data.reviews).filter(r => r.purchased).length;
+        const pending = data.products.length - reviewed;
+        
+        // إحصائيات الحالات
+        const statusCounts = {
+            'متوفر بكثرة': 0,
+            'متوفر بقلة': 0,
+            'غير متوفر': 0
+        };
+        
+        Object.values(data.reviews).forEach(r => {
+            if (statusCounts[r.status] !== undefined) {
+                statusCounts[r.status]++;
+            }
         });
-        alert('✓ تم الحذف!');
-        showSettings();
+        
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const textColor = isDark ? '#f1f5f9' : '#1e293b';
+        
+        // Pie Chart - Status Distribution
+        const statusCanvas = document.getElementById('chart-status');
+        if (statusCanvas) {
+            if (chartsInstances.status) chartsInstances.status.destroy();
+            chartsInstances.status = new Chart(statusCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: ['متوفر بكثرة', 'متوفر بقلة', 'غير متوفر', 'لم يراجع'],
+                    datasets: [{
+                        data: [
+                            statusCounts['متوفر بكثرة'],
+                            statusCounts['متوفر بقلة'],
+                            statusCounts['غير متوفر'],
+                            pending
+                        ],
+                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#94a3b8'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: textColor,
+                                font: { family: 'Cairo', size: 12 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Bar Chart - Purchased vs Not
+        const purchaseCanvas = document.getElementById('chart-purchase');
+        if (purchaseCanvas) {
+            if (chartsInstances.purchase) chartsInstances.purchase.destroy();
+            chartsInstances.purchase = new Chart(purchaseCanvas, {
+                type: 'bar',
+                data: {
+                    labels: ['تم الشراء', 'لم يتم الشراء'],
+                    datasets: [{
+                        label: 'عدد المنتجات',
+                        data: [purchased, reviewed - purchased],
+                        backgroundColor: ['#6366f1', '#cbd5e1'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: textColor, font: { family: 'Cairo' } }
+                        },
+                        x: {
+                            ticks: { color: textColor, font: { family: 'Cairo' } }
+                        }
+                    }
+                }
+            });
+        }
     }
 
     // Initialize
     window.addEventListener('load', async () => {
         try {
+            // تحميل theme
+            loadTheme();
+            
             const t = localStorage.getItem('token');
             const u = localStorage.getItem('user');
 
@@ -1192,12 +2886,13 @@
                 console.log('✅ Found stored credentials!');
                 token = t;
                 user = JSON.parse(u);
-                await showApp();  // انتظر شامل!
+                await showApp();
             } else {
                 console.log('❌ No stored credentials found');
             }
         } catch (error) {
             console.error('❌ Initialization error:', error);
+            showToast('error', 'خطأ في التحميل: ' + error.message);
         }
     });
 </script>
