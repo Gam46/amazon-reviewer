@@ -2711,7 +2711,7 @@
 
     async function showSettings() {
         if (!hasPermission('manage_users')) {
-            document.getElementById('users-list').innerHTML = '<p style="color: #f44336;">ليس لديك صلاحية!</p>';
+            document.getElementById('users-list').innerHTML = '<p style="color: var(--error);">ليس لديك صلاحية!</p>';
             return;
         }
 
@@ -2722,17 +2722,21 @@
             const result = await res.json();
             const users = result.users || [];
 
-            let html = '<h3 style="color: #333; margin-bottom: 15px;">المستخدمون الحاليون</h3>';
+            let html = '<h3 style="margin-bottom: 15px;">👥 المستخدمون الحاليون</h3>';
             users.forEach(u => {
                 html += `
-                    <div style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <strong>${u.username}</strong><br>
-                            <small style="color: #999;">${u.role}</small>
-                        </div>
-                        <div>
-                            <button class="btn-small" onclick="editUser(${u.id})">تعديل</button>
-                            <button class="btn-small danger" onclick="deleteUser(${u.id})">حذف</button>
+                    <div style="background: var(--bg-secondary); padding: 14px; border-radius: 10px; margin-bottom: 10px; border-right: 3px solid var(--primary);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <div style="font-weight: 700; color: var(--text-primary);">👤 ${esc(u.username)}</div>
+                                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                                    🔑 ${u.role === 'admin' ? '🛡️ مسؤول' : u.role === 'editor' ? '✏️ محرر' : u.role === 'reviewer' ? '👁️ مراجع' : u.role}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                <button class="btn-small" onclick="showEditUserModal(${u.id}, '${esc(u.username)}', '${u.role}')">⚙️ تعديل</button>
+                                <button class="btn-small danger" onclick="deleteUser(${u.id})">🗑️ حذف</button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -2741,6 +2745,7 @@
             document.getElementById('users-list').innerHTML = html;
         } catch (error) {
             console.error(error);
+            showToast('error', 'خطأ في تحميل المستخدمين');
         }
     }
 
@@ -2773,22 +2778,104 @@
         }
     }
 
-    function editUser(id) {
-        const password = prompt('🔑 كلمة المرور الجديدة:');
-        if (password) {
-            fetch(`/api/admin/users/${id}`, {
+    function showEditUserModal(id, username, role) {
+        const modal = document.createElement('div');
+        modal.id = 'edit-user-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            direction: rtl;
+        `;
+        
+        modal.innerHTML = `
+            <div style="background: var(--bg-card); border-radius: 16px; padding: 24px; max-width: 420px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0;">⚙️ تعديل المستخدم</h3>
+                    <button onclick="document.getElementById('edit-user-modal').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted);">✕</button>
+                </div>
+                
+                <div style="color: var(--text-secondary); margin-bottom: 16px;">
+                    <strong style="color: var(--text-primary);">👤 ${esc(username)}</strong>
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 13px;">🔑 كلمة المرور (اتركها فارغة لعدم التغيير)</label>
+                    <input type="password" id="modal-password" placeholder="كلمة مرور جديدة" style="width: 100%; padding: 10px; border: 2px solid var(--border); border-radius: 8px; font-family: 'Cairo', sans-serif; background: var(--bg-secondary);">
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 13px;">📋 الدور (الصلاحية)</label>
+                    <select id="modal-role" style="width: 100%; padding: 10px; border: 2px solid var(--border); border-radius: 8px; font-family: 'Cairo', sans-serif; background: var(--bg-secondary);">
+                        <option value="reviewer" ${role === 'reviewer' ? 'selected' : ''}>👁️ مراجع (عرض فقط)</option>
+                        <option value="editor" ${role === 'editor' ? 'selected' : ''}>✏️ محرر (إضافة + تعديل)</option>
+                        <option value="admin" ${role === 'admin' ? 'selected' : ''}>🛡️ مسؤول (كل الصلاحيات)</option>
+                    </select>
+                </div>
+                
+                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
+                    <strong>شرح الأدوار:</strong><br>
+                    • <strong>مراجع:</strong> يرى البيانات والنتائج فقط<br>
+                    • <strong>محرر:</strong> يضيف ويعدّل المنتجات والمراجعات<br>
+                    • <strong>مسؤول:</strong> يدير كل شيء (مستخدمين + بيانات)
+                </p>
+                
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-primary" onclick="updateUser(${id})" style="flex: 1;">💾 حفظ</button>
+                    <button class="btn-primary" style="flex: 1; background: var(--bg-secondary); color: var(--text-primary);" onclick="document.getElementById('edit-user-modal').remove();">إلغاء</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // إغلاق بـ Escape
+        const handler = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', handler);
+            }
+        };
+        document.addEventListener('keydown', handler);
+    }
+    
+    async function updateUser(id) {
+        const password = document.getElementById('modal-password').value;
+        const role = document.getElementById('modal-role').value;
+        
+        if (!password && !role) {
+            showToast('warning', '⚠️ اختر شيء لتعديله!');
+            return;
+        }
+        
+        try {
+            const body = {};
+            if (password) body.password = password;
+            if (role) body.role = role;
+            
+            const res = await fetch(`/api/admin/users/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ password })
-            }).then(() => {
-                showToast('success', '✓ تم تحديث كلمة المرور!');
-                showSettings();
-            }).catch(() => {
-                showToast('error', '❌ فشل التحديث');
+                body: JSON.stringify(body)
             });
+            
+            if (res.ok) {
+                document.getElementById('edit-user-modal').remove();
+                showToast('success', '✓ تم تحديث المستخدم بنجاح!');
+                logActivity('تعديل مستخدم', `تم تحديث صلاحيات المستخدم: ${role || ''}`);
+                showSettings();
+            } else {
+                showToast('error', '❌ خطأ في التحديث');
+            }
+        } catch (error) {
+            showToast('error', 'خطأ: ' + error.message);
         }
     }
 
