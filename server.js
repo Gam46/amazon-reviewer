@@ -194,9 +194,6 @@ function saveReviews(reviews) {
         return false;
     }
 }
-        return false;
-    }
-}
 
 // Middleware
 app.use(express.json({ limit: '50mb' }));
