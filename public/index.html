@@ -1722,6 +1722,33 @@
             return;
         }
 
+        // ===== Input Validation (آمن - فحوصات إضافية فقط) =====
+        // 1. تأكد إن الرابط فعلاً URL صحيح
+        if (!/^https?:\/\/.+/i.test(link)) {
+            showToast('warning', '⚠️ الرابط غير صحيح! يجب أن يبدأ بـ http:// أو https://');
+            return;
+        }
+
+        // 2. تأكد إن الاسم مش طويل أوي (يمنع corruption)
+        if (name.length > 500) {
+            showToast('warning', '⚠️ اسم المنتج طويل جداً (الحد الأقصى 500 حرف)');
+            return;
+        }
+
+        // 3. تأكد إن السعر رقم صحيح (لو اتكتب)
+        const priceVal = document.getElementById('price').value.trim();
+        if (priceVal && isNaN(parseFloat(priceVal.replace(/[^\d.]/g, '')))) {
+            showToast('warning', '⚠️ السعر يجب أن يكون رقماً صحيحاً');
+            return;
+        }
+
+        // 4. تأكد إن الوصف مش طويل أوي
+        const descVal = document.getElementById('description').value.trim();
+        if (descVal.length > 2000) {
+            showToast('warning', '⚠️ الوصف طويل جداً (الحد الأقصى 2000 حرف)');
+            return;
+        }
+
         try {
             const res = await fetch('/api/products', {
                 method: 'POST',
@@ -1790,6 +1817,20 @@
         const file = document.getElementById('excel-file').files[0];
         if (!file) return;
 
+        // ===== Input Validation (آمن - فحوصات إضافية فقط) =====
+        // 1. فحص حجم الملف (الحد الأقصى 10 ميجا)
+        const maxSize = 10 * 1024 * 1024;
+        if (file.size > maxSize) {
+            showToast('warning', '⚠️ الملف كبير جداً! الحد الأقصى 10 ميجابايت');
+            return;
+        }
+        // 2. فحص امتداد الملف
+        const validExt = /\.(xlsx|xls|csv)$/i;
+        if (!validExt.test(file.name)) {
+            showToast('warning', '⚠️ نوع الملف غير مدعوم! استخدم Excel (.xlsx, .xls) أو CSV');
+            return;
+        }
+
         showLoading('جاري معالجة الملف...');
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -1803,13 +1844,13 @@
                     if (row[0] && row[1]) {
                         products.push({
                             link: row[0],
-                            name: row[1],
+                            name: String(row[1]).substring(0, 500),
                             asin: row[2] || '',
                             brand: row[3] || '',
                             price: row[4] || '',
                             category: row[5] || '',
                             imageUrl: row[6] || '',
-                            description: row[7] || '',
+                            description: String(row[7] || '').substring(0, 2000),
                             notes: row[8] || ''
                         });
                     }
@@ -2917,6 +2958,16 @@
         
         if (!password && !role && selectedPerms.length === 0) {
             showToast('warning', '⚠️ لم تغيّر أي شيء!');
+            return;
+        }
+        
+        // ===== Input Validation (آمن - فحوصات إضافية فقط) =====
+        if (password && password.length < 3) {
+            showToast('warning', '⚠️ كلمة المرور قصيرة جداً (3 أحرف على الأقل)');
+            return;
+        }
+        if (password && password.length > 100) {
+            showToast('warning', '⚠️ كلمة المرور طويلة جداً (100 حرف كحد أقصى)');
             return;
         }
         
