@@ -195,6 +195,37 @@ function saveReviews(reviews) {
     }
 }
 
+// ============================================
+// 🔐 SESSION TIMEOUT (Phase 3 - Step 1)
+// ============================================
+// مدة صلاحية الجلسة: 8 ساعات (بالملي ثانية)
+const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
+
+// دالة موحّدة لفك التوكن مع التحقق من انتهاء الصلاحية.
+// ملاحظة: هذه الدالة معرّفة الآن لكنها غير مستخدمة بعد - سيتم
+// استبدال أماكن فك التوكن بها لاحقاً على دفعات صغيرة بعد الاختبار.
+// ترجع: { valid: true, payload } أو { valid: false, reason }
+function decodeToken(token) {
+    try {
+        if (!token) {
+            return { valid: false, reason: 'no_token' };
+        }
+        const payload = JSON.parse(Buffer.from(token, 'base64').toString());
+
+        // التوكنات القديمة (قبل هذه الميزة) ليس بها iat - نقبلها للتوافق
+        if (payload.iat) {
+            const age = Date.now() - payload.iat;
+            if (age > SESSION_DURATION_MS) {
+                return { valid: false, reason: 'expired' };
+            }
+        }
+
+        return { valid: true, payload };
+    } catch (e) {
+        return { valid: false, reason: 'invalid' };
+    }
+}
+
 // Middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -237,8 +268,8 @@ app.post('/api/auth/login', (req, res) => {
             return res.status(401).json({ success: false, error: 'Invalid credentials' });
         }
 
-        // Create token (simple JWT-like token)
-        const token = Buffer.from(JSON.stringify({ id: user.id, username: user.username })).toString('base64');
+        // Create token (simple JWT-like token with issue time for session timeout)
+        const token = Buffer.from(JSON.stringify({ id: user.id, username: user.username, iat: Date.now() })).toString('base64');
         
         const response = { 
             success: true, 
