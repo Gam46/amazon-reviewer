@@ -9,7 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         /* ===== CSS Variables for Light Mode ===== */
         :root {
@@ -1343,6 +1342,16 @@
             <button class="btn-small" onclick="window.print()">🖨️ طباعة</button>
         </div>
 
+        <!-- Bulk Actions Bar -->
+        <div id="bulk-actions-bar" style="display: none; align-items: center; gap: 12px; padding: 12px 16px; background: var(--gradient); color: white; border-radius: 12px; margin-bottom: 14px; flex-wrap: wrap;">
+            <span style="font-weight: 700;">✓ تم تحديد <span id="bulk-count">0</span> منتج</span>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-right: auto;">
+                <button onclick="bulkResetReview()" style="padding: 7px 14px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; font-family: 'Cairo', sans-serif;">🔄 إعادة مراجعة</button>
+                <button onclick="bulkDelete()" style="padding: 7px 14px; background: rgba(239,68,68,0.9); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; font-family: 'Cairo', sans-serif;">🗑️ حذف المحدد</button>
+                <button onclick="clearSelection()" style="padding: 7px 14px; background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; font-family: 'Cairo', sans-serif;">✕ إلغاء التحديد</button>
+            </div>
+        </div>
+
         <div class="table-wrapper" style="overflow-x: auto;">
             <table>
                 <thead>
@@ -1377,16 +1386,34 @@
     <div id="settings" class="tab-content content-card">
         <h2>⚙️ إدارة المستخدمين</h2>
         <div id="users-list"></div>
-        <hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;">
-        <h3 style="color: #333; margin-bottom: 15px;">➕ إضافة مستخدم</h3>
-        <input type="text" id="new-username" placeholder="الاسم" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
-        <input type="password" id="new-password" placeholder="كلمة المرور" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
-        <select id="new-role" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
-            <option value="reviewer">مراجع</option>
-            <option value="editor">محرر</option>
-            <option value="admin">مسؤول</option>
-        </select>
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border);">
+        <h3 style="margin-bottom: 15px;">➕ إضافة مستخدم</h3>
+        <div class="form-group">
+            <input type="text" id="new-username" placeholder="👤 اسم المستخدم">
+        </div>
+        <div class="form-group">
+            <input type="password" id="new-password" placeholder="🔒 كلمة المرور">
+        </div>
+        <div class="form-group">
+            <select id="new-role">
+                <option value="reviewer">مراجع</option>
+                <option value="editor">محرر</option>
+                <option value="admin">مسؤول</option>
+            </select>
+        </div>
         <button class="btn-primary" onclick="createUser()">إضافة مستخدم</button>
+    </div>
+
+    <!-- ACTIVITY LOG -->
+    <div id="activity" class="tab-content content-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <h2 style="margin-bottom: 0;">📋 سجل النشاطات</h2>
+            <button class="btn-small danger" onclick="clearActivityLog()">🧹 مسح السجل</button>
+        </div>
+        <p style="color: var(--text-secondary); font-size: 13px; margin: 12px 0 20px;">
+            سجل بكل العمليات التي تمت في التطبيق (آخر 200 نشاط)
+        </p>
+        <div id="activity-log-content"></div>
     </div>
 </div>
 
@@ -1394,6 +1421,17 @@
     let token = null;
     let user = null;
     let data = { products: [], reviews: {} };
+    
+    // ===== XSS Protection =====
+    function esc(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
     let selectedStatus = null;
     let currentPage = 1;
     let filteredProducts = [];
@@ -1455,6 +1493,7 @@
                 
                 btnText.innerHTML = '✓ تم بنجاح!';
                 showToast('success', `أهلاً بك ${user.username}! 👋`);
+                logActivity('تسجيل دخول', `${user.username} سجّل الدخول`);
                 
                 await showApp();
             } else {
@@ -1521,7 +1560,7 @@
             updateUserAvatar();
 
             // 3. بناء التبويبات
-            buildTabs();
+            const firstTab = buildTabs();
             
             // 4. تحميل البيانات (قبل عرض أي شيء!)
             console.log('📡 Loading data...');
@@ -1529,7 +1568,7 @@
             console.log('✅ Data loaded successfully!');
             
             // 5. الآن عرض المحتوى (بعد ما تنتهي البيانات)
-            switchTab('review');
+            switchTab(firstTab || 'review');
             console.log('✅ App ready!');
         } catch (error) {
             console.error('❌ Error in showApp:', error);
@@ -1546,21 +1585,49 @@
             { id: 'add', label: '➕ إضافة', perm: 'add_products' },
             { id: 'review', label: '✓ مراجعة', perm: 'review_products' },
             { id: 'results', label: '📊 النتائج', perm: 'view_reports' },
+            { id: 'activity', label: '📋 السجل', perm: 'view_reports' },
             { id: 'settings', label: '⚙️ الإعدادات', perm: 'manage_users' }
         ];
 
         const container = document.getElementById('tabs-container');
         container.innerHTML = '';
 
-        tabs.forEach((t, i) => {
+        let firstTab = null;
+        tabs.forEach((t) => {
             if (hasPermission(t.perm)) {
+                if (!firstTab) firstTab = t.id;
                 const btn = document.createElement('button');
-                btn.className = 'tab-btn' + (i === 0 ? ' active' : '');
-                btn.textContent = t.label;
+                btn.className = 'tab-btn';
+                btn.setAttribute('data-tab', t.id);
+                
+                // badge للمراجعة بعدد المنتجات المعلقة
+                if (t.id === 'review') {
+                    const pendingCount = (data.products || []).filter(p => !data.reviews[p.id]).length;
+                    btn.innerHTML = pendingCount > 0 
+                        ? `${t.label} <span class="tab-badge">${pendingCount}</span>`
+                        : t.label;
+                } else {
+                    btn.textContent = t.label;
+                }
+                
                 btn.onclick = () => switchTab(t.id);
                 container.appendChild(btn);
             }
         });
+        
+        return firstTab;
+    }
+    
+    // تحديث الـ badge بعد تغيير البيانات
+    function refreshTabBadges() {
+        const reviewBtn = document.querySelector('.tab-btn[data-tab="review"]');
+        if (reviewBtn) {
+            const pendingCount = (data.products || []).filter(p => !data.reviews[p.id]).length;
+            const label = '✓ مراجعة';
+            reviewBtn.innerHTML = pendingCount > 0 
+                ? `${label} <span class="tab-badge">${pendingCount}</span>`
+                : label;
+        }
     }
 
     function switchTab(id) {
@@ -1572,18 +1639,15 @@
         const content = document.getElementById(id);
         if (content) content.classList.add('active');
         
-        // تظليل الزر المختار
-        document.querySelectorAll('.tab-btn').forEach(b => {
-            if (b.textContent.includes('إضافة') && id === 'add') b.classList.add('active');
-            else if (b.textContent.includes('مراجعة') && id === 'review') b.classList.add('active');
-            else if (b.textContent.includes('النتائج') && id === 'results') b.classList.add('active');
-            else if (b.textContent.includes('الإعدادات') && id === 'settings') b.classList.add('active');
-        });
+        // تظليل الزر المختار باستخدام data-tab
+        const activeBtn = document.querySelector(`.tab-btn[data-tab="${id}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
 
         // عرض المحتوى
         if (id === 'review') showReview();
         if (id === 'results') showResults();
         if (id === 'settings') showSettings();
+        if (id === 'activity') showActivityLog();
     }
 
     async function loadData() {
@@ -1605,6 +1669,11 @@
             }
             
             console.log('✓ Data loaded:', data);
+            
+            // تحديث badge التبويبات
+            if (typeof refreshTabBadges === 'function') {
+                try { refreshTabBadges(); } catch (e) {}
+            }
         } catch (error) {
             console.error('Error loading data:', error);
             data = { products: [], reviews: {} };
@@ -1641,6 +1710,7 @@
 
             if (res.ok) {
                 showToast('success', '✓ تم إضافة المنتج بنجاح!');
+                logActivity('إضافة منتج', name);
                 
                 // مسح الحقول
                 ['link', 'name', 'asin', 'brand', 'price', 'category', 'imageUrl', 'description', 'notes'].forEach(id => {
@@ -1730,6 +1800,7 @@
                 hideLoading();
                 if (res.ok) {
                     showToast('success', `✓ تم رفع ${products.length} منتج بنجاح!`);
+                    logActivity('رفع ملف', `تم رفع ${products.length} منتج عبر Excel`);
                     document.getElementById('excel-file').value = '';
                     await loadData();
                 } else {
@@ -1744,12 +1815,21 @@
         reader.readAsArrayBuffer(file);
     }
 
+    let jumpToProductId = null;
+    
     function showReview() {
         console.log('showReview - data:', data);
         console.log('showReview - products count:', data.products?.length);
         
         // البحث عن منتج لم تتم مراجعته وليس متخطى
-        const pending = data.products?.find(p => !data.reviews[p.id] && !skippedProducts.has(p.id));
+        let pending;
+        if (jumpToProductId) {
+            pending = data.products?.find(p => p.id == jumpToProductId);
+            jumpToProductId = null; // استخدام مرة واحدة
+        }
+        if (!pending) {
+            pending = data.products?.find(p => !data.reviews[p.id] && !skippedProducts.has(p.id));
+        }
         const content = document.getElementById('review-content');
 
         if (!pending) {
@@ -1784,6 +1864,14 @@
         const progressPercent = Math.round((reviewed / totalProducts) * 100);
         
         content.innerHTML = `
+            <!-- Quick Jump -->
+            <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+                <input type="text" id="jump-search" placeholder="🔍 اقفز لمنتج (اكتب اسم أو ASIN)..." 
+                    style="flex: 1; min-width: 200px; padding: 10px 14px; border: 2px solid var(--border); border-radius: 10px; font-family: 'Cairo', sans-serif; background: var(--bg-card); color: var(--text-primary);"
+                    onkeypress="if(event.key==='Enter') doJumpToProduct()">
+                <button class="btn-small" onclick="doJumpToProduct()" style="margin: 0;">انتقال</button>
+            </div>
+
             <!-- Shortcuts Hint -->
             <div class="shortcuts-hint">
                 <strong>⚡ اختصارات سريعة:</strong>
@@ -1807,28 +1895,28 @@
 
             <!-- Product Info -->
             <div class="review-product-card">
-                <strong>${pending.name}</strong>
+                <strong>${esc(pending.name)}</strong>
                 <small>
-                    ${pending.asin ? `🏷️ ASIN: <strong>${pending.asin}</strong> | ` : ''}
-                    ${pending.brand ? `🏪 ${pending.brand} | ` : ''}
-                    ${pending.price ? `💰 ${pending.price}` : ''}
+                    ${pending.asin ? `🏷️ ASIN: <strong>${esc(pending.asin)}</strong> | ` : ''}
+                    ${pending.brand ? `🏪 ${esc(pending.brand)} | ` : ''}
+                    ${pending.price ? `💰 ${esc(pending.price)}` : ''}
                 </small>
             </div>
 
             ${pending.imageUrl ? `
                 <div class="review-image-wrapper">
-                    <img src="${pending.imageUrl}" alt="${pending.name}" loading="lazy">
+                    <img src="${esc(pending.imageUrl)}" alt="${esc(pending.name)}" loading="lazy">
                 </div>
             ` : ''}
 
             ${pending.description ? `
                 <div class="review-description">
                     <strong>📝 وصف المنتج:</strong>
-                    <p>${pending.description}</p>
+                    <p>${esc(pending.description)}</p>
                 </div>
             ` : ''}
 
-            <a href="${pending.link}" target="_blank" class="amazon-link">
+            <a href="${esc(pending.link)}" target="_blank" class="amazon-link">
                 🔗 فتح على أمازون
             </a>
             
@@ -2013,6 +2101,7 @@
         if (currentPending) {
             skippedProducts.add(currentPending.id);
             console.log('✓ تم تخطي:', currentPending.name, '| ID:', currentPending.id);
+            logActivity('تخطي منتج', currentPending.name);
         }
         
         // تنظيف الحقول
@@ -2097,6 +2186,8 @@
                 clearDraft(id);
                 
                 showToast('success', '✓ تم حفظ المراجعة بنجاح!');
+                const reviewedProduct = data.products.find(p => p.id == id);
+                logActivity('مراجعة منتج', (reviewedProduct ? reviewedProduct.name : id) + ' - ' + selectedStatus);
                 selectedStatus = null;
                 
                 // تحميل البيانات الجديدة وعرض المنتج التالي
@@ -2251,27 +2342,90 @@
         applyFilter();
     }
 
+    // ===== Sorting State =====
+    let sortColumn = null;
+    let sortDirection = 'asc';
+    let selectedProducts = new Set();
+    
+    function sortBy(column) {
+        if (sortColumn === column) {
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            sortColumn = column;
+            sortDirection = 'asc';
+        }
+        displayResults();
+    }
+    
+    function getSortValue(p, column) {
+        const r = data.reviews[p.id];
+        switch (column) {
+            case 'name': return (p.name || '').toLowerCase();
+            case 'date': return p.addedAt || '';
+            case 'status': return r ? r.status : 'zzz';
+            case 'supplier': return r?.supplier || 'zzz';
+            case 'purchased': return r?.purchased ? '1' : '0';
+            default: return '';
+        }
+    }
+
     function displayResults() {
+        // ترتيب المنتجات
+        let sortedProducts = [...filteredProducts];
+        if (sortColumn) {
+            sortedProducts.sort((a, b) => {
+                const va = getSortValue(a, sortColumn);
+                const vb = getSortValue(b, sortColumn);
+                if (va < vb) return sortDirection === 'asc' ? -1 : 1;
+                if (va > vb) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        
         const start = (currentPage - 1) * pageSize;
         const end = start + pageSize;
-        const page = filteredProducts.slice(start, end);
-        const totalPages = Math.ceil(filteredProducts.length / pageSize) || 1;
+        const page = sortedProducts.slice(start, end);
+        const totalPages = Math.ceil(sortedProducts.length / pageSize) || 1;
+
+        // سهم الترتيب
+        const arrow = (col) => {
+            if (sortColumn !== col) return ' ⇅';
+            return sortDirection === 'asc' ? ' ↑' : ' ↓';
+        };
+        
+        // تحديث رؤوس الجدول لتكون قابلة للترتيب
+        const thead = document.querySelector('#results table thead tr');
+        if (thead) {
+            thead.innerHTML = `
+                <th style="width: 40px;">
+                    <input type="checkbox" id="select-all-cb" onchange="toggleSelectAll(this)" style="width: 16px; height: 16px; cursor: pointer;">
+                </th>
+                <th style="cursor: pointer; user-select: none;" onclick="sortBy('name')">المنتج${arrow('name')}</th>
+                <th style="cursor: pointer; user-select: none;" onclick="sortBy('date')">التاريخ${arrow('date')}</th>
+                <th style="cursor: pointer; user-select: none;" onclick="sortBy('status')">الحالة${arrow('status')}</th>
+                <th style="cursor: pointer; user-select: none;" onclick="sortBy('supplier')">المورد${arrow('supplier')}</th>
+                <th style="cursor: pointer; user-select: none;" onclick="sortBy('purchased')">الشراء${arrow('purchased')}</th>
+                <th>الإجراءات</th>
+            `;
+        }
 
         let html = '';
         page.forEach(p => {
             const r = data.reviews[p.id];
             const statusClass = !r ? 'status-no' : r.status === 'متوفر بكثرة' ? 'status-available' : r.status === 'متوفر بقلة' ? 'status-limited' : 'status-unavailable';
+            const isChecked = selectedProducts.has(p.id) ? 'checked' : '';
             html += `
                 <tr>
-                    <td>${p.name}</td>
-                    <td>${p.addedAt ? p.addedAt.split(' ')[0] : '-'}</td>
+                    <td><input type="checkbox" class="row-cb" data-pid="${p.id}" ${isChecked} onchange="toggleSelectProduct('${p.id}', this)" style="width: 16px; height: 16px; cursor: pointer;"></td>
+                    <td>${esc(p.name)}</td>
+                    <td>${p.addedAt ? formatDate(p.addedAt) : '-'}</td>
                     <td>${r ? `<span class="status-badge ${statusClass}">${r.status}</span>` : '-'}</td>
-                    <td>${r?.supplier || '-'}</td>
+                    <td>${esc(r?.supplier) || '-'}</td>
                     <td><span class="status-badge ${r?.purchased ? 'status-yes' : 'status-no'}">${r?.purchased ? 'نعم' : 'لا'}</span></td>
                     <td>
                         <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                            ${r ? `<button class="btn-small" style="background: #2196F3;" onclick="resetReview('${p.id}')">🔄 إعادة</button>` : ''}
-                            <button class="btn-small" style="background: #4caf50;" onclick="duplicateProduct('${p.id}')">📋 نسخ</button>
+                            ${r ? `<button class="btn-small" onclick="resetReview('${p.id}')">🔄 إعادة</button>` : ''}
+                            <button class="btn-small success" onclick="duplicateProduct('${p.id}')">📋 نسخ</button>
                             <button class="btn-small danger" onclick="deleteProduct('${p.id}')">🗑️ حذف</button>
                         </div>
                     </td>
@@ -2279,8 +2433,122 @@
             `;
         });
 
-        document.getElementById('results-table').innerHTML = html || '<tr><td colspan="6" style="text-align: center; color: #ccc;">لا توجد نتائج</td></tr>';
+        document.getElementById('results-table').innerHTML = html || '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">لا توجد نتائج</td></tr>';
         document.getElementById('page-info').textContent = `الصفحة ${currentPage} من ${totalPages}`;
+        
+        updateBulkBar();
+    }
+    
+    // ===== Bulk Selection =====
+    function toggleSelectProduct(id, checkbox) {
+        if (checkbox.checked) {
+            selectedProducts.add(id);
+        } else {
+            selectedProducts.delete(id);
+        }
+        updateBulkBar();
+    }
+    
+    function toggleSelectAll(checkbox) {
+        const rows = document.querySelectorAll('.row-cb');
+        rows.forEach(cb => {
+            cb.checked = checkbox.checked;
+            const pid = cb.getAttribute('data-pid');
+            if (checkbox.checked) {
+                selectedProducts.add(pid);
+            } else {
+                selectedProducts.delete(pid);
+            }
+        });
+        updateBulkBar();
+    }
+    
+    function updateBulkBar() {
+        const bar = document.getElementById('bulk-actions-bar');
+        if (!bar) return;
+        
+        const count = selectedProducts.size;
+        if (count > 0) {
+            bar.style.display = 'flex';
+            const countEl = document.getElementById('bulk-count');
+            if (countEl) countEl.textContent = count;
+        } else {
+            bar.style.display = 'none';
+        }
+    }
+    
+    function clearSelection() {
+        selectedProducts.clear();
+        document.querySelectorAll('.row-cb').forEach(cb => cb.checked = false);
+        const selectAll = document.getElementById('select-all-cb');
+        if (selectAll) selectAll.checked = false;
+        updateBulkBar();
+    }
+    
+    async function bulkDelete() {
+        const count = selectedProducts.size;
+        if (count === 0) return;
+        
+        showConfirm(
+            '🗑️ حذف جماعي',
+            `هل أنت متأكد من حذف ${count} منتج؟ لا يمكن التراجع عن هذا الإجراء.`,
+            async () => {
+                try {
+                    showLoading(`جاري حذف ${count} منتج...`);
+                    const ids = Array.from(selectedProducts);
+                    
+                    for (const id of ids) {
+                        await fetch(`/api/products/${id}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                    }
+                    
+                    logActivity('حذف جماعي', `تم حذف ${count} منتج`);
+                    selectedProducts.clear();
+                    hideLoading();
+                    showToast('success', `✓ تم حذف ${count} منتج بنجاح!`);
+                    await loadData();
+                    showResults();
+                } catch (error) {
+                    hideLoading();
+                    showToast('error', 'خطأ في الحذف الجماعي: ' + error.message);
+                }
+            }
+        );
+    }
+    
+    async function bulkResetReview() {
+        const count = selectedProducts.size;
+        if (count === 0) return;
+        
+        showConfirm(
+            '🔄 إعادة مراجعة جماعية',
+            `هل تريد إعادة مراجعة ${count} منتج؟ سيتم حذف مراجعاتهم الحالية.`,
+            async () => {
+                try {
+                    showLoading(`جاري إعادة ${count} منتج...`);
+                    const ids = Array.from(selectedProducts);
+                    
+                    for (const id of ids) {
+                        await fetch(`/api/reviews/${id}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                    }
+                    
+                    logActivity('إعادة مراجعة جماعية', `تم إعادة ${count} منتج`);
+                    selectedProducts.clear();
+                    hideLoading();
+                    showToast('success', `✓ تم إعادة ${count} منتج للمراجعة!`);
+                    await loadData();
+                    showResults();
+                } catch (error) {
+                    hideLoading();
+                    showToast('error', 'خطأ: ' + error.message);
+                }
+            }
+        );
     }
 
     function previousPage() {
@@ -2379,6 +2647,7 @@
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     showToast('success', '✓ تم حذف المنتج!');
+                    logActivity('حذف منتج', 'تم حذف منتج');
                     await loadData();
                     showResults();
                 } catch (error) {
@@ -2722,57 +2991,321 @@
         }
     }
 
-    // ===== EXPORT PDF =====
+    // ===== EXPORT PDF (Arabic-friendly via HTML print) =====
     async function exportPDF() {
         try {
             showLoading('جاري إنشاء تقرير PDF...');
             
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            // إضافة العنوان
-            doc.setFontSize(18);
-            doc.text('YAK Store - Products Report', 105, 15, { align: 'center' });
-            
-            doc.setFontSize(10);
-            const today = new Date().toLocaleDateString('ar-EG');
-            doc.text(`Date: ${today}`, 14, 25);
-            doc.text(`Reviewer: ${user?.username || ''}`, 14, 32);
-            
             // إحصائيات
             const reviewed = Object.keys(data.reviews).length;
             const purchased = Object.values(data.reviews).filter(r => r.purchased).length;
+            const pending = data.products.length - reviewed;
             
-            doc.setFontSize(12);
-            doc.text(`Total Products: ${data.products.length}`, 14, 45);
-            doc.text(`Reviewed: ${reviewed}`, 14, 52);
-            doc.text(`Purchased: ${purchased}`, 14, 59);
-            doc.text(`Pending: ${data.products.length - reviewed}`, 14, 66);
-            
-            // جدول
-            let y = 80;
-            doc.setFontSize(10);
-            doc.text('Products List:', 14, y);
-            y += 8;
-            
-            data.products.slice(0, 30).forEach((p, i) => {
-                if (y > 270) {
-                    doc.addPage();
-                    y = 20;
-                }
-                const r = data.reviews[p.id];
-                const status = r ? r.status : 'Not reviewed';
-                doc.text(`${i + 1}. ${p.name.substring(0, 50)} - ${status}`, 14, y);
-                y += 6;
+            // حساب الإحصائيات التفصيلية
+            const statusCounts = {
+                'متوفر بكثرة': 0,
+                'متوفر بقلة': 0,
+                'غير متوفر': 0
+            };
+            Object.values(data.reviews).forEach(r => {
+                if (statusCounts[r.status] !== undefined) statusCounts[r.status]++;
             });
             
-            doc.save(`YAK_Store_Report_${Date.now()}.pdf`);
+            const today = new Date().toLocaleDateString('ar-EG', {
+                year: 'numeric', month: 'long', day: 'numeric'
+            });
+            
+            // بناء جدول المنتجات
+            let productsHTML = '';
+            data.products.forEach((p, i) => {
+                const r = data.reviews[p.id];
+                const status = r ? r.status : 'لم يراجع';
+                const statusClass = !r ? 'pending' : 
+                    r.status === 'متوفر بكثرة' ? 'available' : 
+                    r.status === 'متوفر بقلة' ? 'limited' : 'unavailable';
+                
+                productsHTML += `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td>${esc(p.name) || '-'}</td>
+                        <td>${esc(p.asin) || '-'}</td>
+                        <td>${esc(p.brand) || '-'}</td>
+                        <td>${esc(p.price) || '-'}</td>
+                        <td><span class="badge ${statusClass}">${esc(status)}</span></td>
+                        <td>${esc(r?.supplier) || '-'}</td>
+                        <td>${esc(r?.purchasePrice) || '-'}</td>
+                        <td>${esc(r?.quantity) || '-'}</td>
+                        <td>${r?.purchased ? '✓' : '✗'}</td>
+                    </tr>
+                `;
+            });
+            
+            // إنشاء نافذة جديدة للطباعة
+            const printWindow = window.open('', '_blank', 'width=900,height=700');
+            
+            const htmlContent = `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>تقرير YAK Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Cairo', 'Arial', sans-serif;
+            padding: 30px;
+            color: #1e293b;
+            background: white;
+            line-height: 1.6;
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 3px solid #6366f1;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #6366f1;
+            font-size: 32px;
+            margin-bottom: 8px;
+            font-weight: 800;
+        }
+        .header p {
+            color: #64748b;
+            font-size: 14px;
+        }
+        .info-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 10px;
+        }
+        .info-item {
+            font-size: 14px;
+        }
+        .info-item strong {
+            color: #6366f1;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        .stat {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            padding: 16px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-num {
+            font-size: 28px;
+            font-weight: 800;
+        }
+        .stat-label {
+            font-size: 12px;
+            margin-top: 4px;
+            opacity: 0.95;
+        }
+        .breakdown {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 25px;
+        }
+        .breakdown-item {
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .breakdown-item.available {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .breakdown-item.limited {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .breakdown-item.unavailable {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        h2 {
+            color: #1e293b;
+            font-size: 20px;
+            margin: 20px 0 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-bottom: 20px;
+        }
+        th {
+            background: #6366f1;
+            color: white;
+            padding: 10px 6px;
+            text-align: right;
+            font-weight: 700;
+            font-size: 11px;
+        }
+        td {
+            padding: 8px 6px;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: right;
+        }
+        tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            display: inline-block;
+        }
+        .badge.available { background: #d1fae5; color: #065f46; }
+        .badge.limited { background: #fef3c7; color: #92400e; }
+        .badge.unavailable { background: #fee2e2; color: #991b1b; }
+        .badge.pending { background: #e2e8f0; color: #475569; }
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #e2e8f0;
+            text-align: center;
+            color: #64748b;
+            font-size: 11px;
+        }
+        .print-btn {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Cairo', sans-serif;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        .print-btn:hover {
+            background: #4f46e5;
+        }
+        @media print {
+            .print-btn { display: none; }
+            body { padding: 15px; }
+            table { font-size: 10px; }
+            th, td { padding: 6px 4px; }
+            @page {
+                size: A4;
+                margin: 1cm;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
+    
+    <div class="header">
+        <h1>🏪 YAK Store</h1>
+        <p>تقرير مراجعة منتجات أمازون</p>
+    </div>
+    
+    <div class="info-section">
+        <div class="info-item">
+            <strong>📅 تاريخ التقرير:</strong> ${today}
+        </div>
+        <div class="info-item">
+            <strong>👤 المراجع:</strong> ${user?.username || 'غير محدد'}
+        </div>
+    </div>
+    
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-num">${data.products.length}</div>
+            <div class="stat-label">إجمالي المنتجات</div>
+        </div>
+        <div class="stat">
+            <div class="stat-num">${reviewed}</div>
+            <div class="stat-label">تمت المراجعة</div>
+        </div>
+        <div class="stat">
+            <div class="stat-num">${purchased}</div>
+            <div class="stat-label">تم الشراء</div>
+        </div>
+        <div class="stat">
+            <div class="stat-num">${pending}</div>
+            <div class="stat-label">في الانتظار</div>
+        </div>
+    </div>
+    
+    <h2>📊 توزيع الحالات</h2>
+    <div class="breakdown">
+        <div class="breakdown-item available">
+            ✅ متوفر بكثرة: ${statusCounts['متوفر بكثرة']}
+        </div>
+        <div class="breakdown-item limited">
+            ⚠️ متوفر بقلة: ${statusCounts['متوفر بقلة']}
+        </div>
+        <div class="breakdown-item unavailable">
+            ❌ غير متوفر: ${statusCounts['غير متوفر']}
+        </div>
+    </div>
+    
+    <h2>📋 قائمة المنتجات (${data.products.length})</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>اسم المنتج</th>
+                <th>ASIN</th>
+                <th>البراند</th>
+                <th>السعر</th>
+                <th>الحالة</th>
+                <th>المورد</th>
+                <th>سعر الشراء</th>
+                <th>الكمية</th>
+                <th>تم الشراء</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${productsHTML}
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        <p><strong>YAK Store</strong> © ${new Date().getFullYear()} - تم إنشاء التقرير في ${new Date().toLocaleString('ar-EG')}</p>
+    </div>
+</body>
+</html>
+            `;
+            
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+            
+            // فتح نافذة الطباعة تلقائياً بعد تحميل
+            printWindow.addEventListener('load', () => {
+                setTimeout(() => {
+                    printWindow.print();
+                }, 800);
+            });
             
             hideLoading();
-            showToast('success', '✓ تم تحميل تقرير PDF بنجاح!');
+            showToast('success', '✓ تم فتح التقرير! اختر "حفظ كـ PDF" من نافذة الطباعة');
         } catch (error) {
             hideLoading();
-            showToast('error', 'خطأ في إنشاء PDF: ' + error.message);
+            showToast('error', 'خطأ في إنشاء التقرير: ' + error.message);
             console.error('PDF error:', error);
         }
     }
@@ -2869,6 +3402,115 @@
                 }
             });
         }
+    }
+
+    // ============================================
+    // 📋 ACTIVITY LOG (Phase 2)
+    // ============================================
+    
+    function doJumpToProduct() {
+        const searchEl = document.getElementById('jump-search');
+        if (!searchEl) return;
+        
+        const query = searchEl.value.trim().toLowerCase();
+        if (!query) {
+            showToast('warning', 'اكتب اسم المنتج أو ASIN');
+            return;
+        }
+        
+        // البحث عن المنتج
+        const found = data.products.find(p => 
+            (p.name || '').toLowerCase().includes(query) ||
+            (p.asin || '').toLowerCase().includes(query)
+        );
+        
+        if (found) {
+            jumpToProductId = found.id;
+            // إزالته من المتخطاة لو كان متخطى
+            skippedProducts.delete(found.id);
+            showToast('success', `✓ تم الانتقال إلى: ${found.name.substring(0, 40)}`);
+            showReview();
+        } else {
+            showToast('error', '❌ لم يتم العثور على منتج بهذا الاسم أو ASIN');
+        }
+    }
+    
+    function logActivity(action, details) {
+        try {
+            const logs = JSON.parse(localStorage.getItem('activity_log') || '[]');
+            logs.unshift({
+                action,
+                details,
+                user: user?.username || 'غير معروف',
+                timestamp: new Date().toISOString()
+            });
+            // الاحتفاظ بآخر 200 نشاط فقط
+            if (logs.length > 200) logs.length = 200;
+            localStorage.setItem('activity_log', JSON.stringify(logs));
+        } catch (e) {
+            console.error('Error logging activity:', e);
+        }
+    }
+    
+    function showActivityLog() {
+        const logs = JSON.parse(localStorage.getItem('activity_log') || '[]');
+        const container = document.getElementById('activity-log-content');
+        if (!container) return;
+        
+        if (logs.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    <div style="font-size: 50px; margin-bottom: 12px;">📋</div>
+                    <p>لا توجد نشاطات مسجلة بعد</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const actionIcons = {
+            'إضافة منتج': '➕',
+            'حذف منتج': '🗑️',
+            'حذف جماعي': '🗑️',
+            'مراجعة منتج': '✓',
+            'إعادة مراجعة': '🔄',
+            'إعادة مراجعة جماعية': '🔄',
+            'تخطي منتج': '⏭️',
+            'رفع ملف': '📤',
+            'تسجيل دخول': '🔐',
+            'حذف الكل': '🧹'
+        };
+        
+        let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+        logs.forEach(log => {
+            const icon = actionIcons[log.action] || '📌';
+            html += `
+                <div style="display: flex; gap: 12px; align-items: flex-start; padding: 12px; background: var(--bg-secondary); border-radius: 10px; border-right: 3px solid var(--primary);">
+                    <span style="font-size: 20px;">${icon}</span>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 700; color: var(--text-primary); font-size: 13px;">${esc(log.action)}</div>
+                        <div style="color: var(--text-secondary); font-size: 12px; margin: 2px 0;">${esc(log.details)}</div>
+                        <div style="color: var(--text-muted); font-size: 11px;">
+                            👤 ${esc(log.user)} • 🕐 ${formatDateTime(log.timestamp)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        container.innerHTML = html;
+    }
+    
+    function clearActivityLog() {
+        showConfirm(
+            '🧹 مسح سجل النشاطات',
+            'هل أنت متأكد من مسح كل سجل النشاطات؟',
+            () => {
+                localStorage.removeItem('activity_log');
+                showActivityLog();
+                showToast('success', '✓ تم مسح سجل النشاطات');
+            }
+        );
     }
 
     // Initialize
