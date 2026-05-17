@@ -1208,20 +1208,17 @@
                 <input type="text" id="brand" placeholder="البراند">
             </div>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <div class="form-group">
-                <label>السعر</label>
-                <input type="text" id="price" placeholder="السعر">
-            </div>
-            <div class="form-group">
-                <label>القسم</label>
-                <select id="category">
-                    <option value="">-- اختر --</option>
-                    <option value="إلكترونيات">إلكترونيات</option>
-                    <option value="ملابس">ملابس</option>
-                    <option value="منزل">منزل</option>
-                </select>
-            </div>
+        <div class="form-group">
+            <label>السعر</label>
+            <input type="text" id="price" placeholder="السعر">
+        </div>
+        <div class="form-group">
+            <label>الأقسام (من العام للأخص - اترك الفارغ فاضي)</label>
+            <input type="text" id="cat1" placeholder="القسم الرئيسي (مثال: Electronics)" style="margin-bottom: 6px;">
+            <input type="text" id="cat2" placeholder="القسم الفرعي 1 (اختياري)" style="margin-bottom: 6px;">
+            <input type="text" id="cat3" placeholder="القسم الفرعي 2 (اختياري)" style="margin-bottom: 6px;">
+            <input type="text" id="cat4" placeholder="القسم الفرعي 3 (اختياري)" style="margin-bottom: 6px;">
+            <input type="text" id="cat5" placeholder="القسم الفرعي 4 (اختياري)">
         </div>
         <div class="form-group">
             <label>رابط الصورة (من أمازون) 🖼️</label>
@@ -1750,6 +1747,16 @@
         }
 
         try {
+            // تجميع الأقسام من الخانات الخمسة (تجاهل الفارغ)
+            const catInputs = ['cat1', 'cat2', 'cat3', 'cat4', 'cat5'];
+            const categories = [];
+            catInputs.forEach(cid => {
+                const el = document.getElementById(cid);
+                if (el && el.value.trim() !== '') {
+                    categories.push(el.value.trim());
+                }
+            });
+
             const res = await fetch('/api/products', {
                 method: 'POST',
                 headers: {
@@ -1761,7 +1768,8 @@
                     asin: document.getElementById('asin').value,
                     brand: document.getElementById('brand').value,
                     price: document.getElementById('price').value,
-                    category: document.getElementById('category').value,
+                    categories: categories,
+                    category: categories.join(' > '),
                     imageUrl: document.getElementById('imageUrl').value,
                     description: document.getElementById('description').value,
                     notes: document.getElementById('notes').value
@@ -1773,7 +1781,7 @@
                 logActivity('إضافة منتج', name);
                 
                 // مسح الحقول
-                ['link', 'name', 'asin', 'brand', 'price', 'category', 'imageUrl', 'description', 'notes'].forEach(id => {
+                ['link', 'name', 'asin', 'brand', 'price', 'cat1', 'cat2', 'cat3', 'cat4', 'cat5', 'imageUrl', 'description', 'notes'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) el.value = '';
                 });
@@ -1790,22 +1798,41 @@
 
     function downloadTemplate() {
         const templateData = [
-            ['الرابط', 'الاسم', 'ASIN', 'البراند', 'السعر', 'القسم', 'رابط الصورة', 'الوصف', 'ملاحظات'],
+            ['الرابط', 'الاسم', 'ASIN', 'البراند', 'السعر', 'Category_1', 'Category_2', 'Category_3', 'Category_4', 'Category_5', 'رابط الصورة', 'الوصف', 'ملاحظات'],
             [
                 'https://www.amazon.eg/...',
-                'مثال: كاميرا راوينج',
+                'مثال: جراب حماية ايفون',
                 'B0GFXSV2HD',
-                'Samsung',
+                'Generic',
                 '150 جنيه',
-                'إلكترونيات',
+                'Electronics',
+                'Mobile Phones & Communication',
+                'Accessories',
+                'Cases & Covers',
+                'Basic Cases',
                 'https://m.media-amazon.com/images/...',
                 'وصف تفصيلي للمنتج يشرح المميزات',
                 'ملاحظات إضافية اختيارية'
+            ],
+            [
+                'https://www.amazon.eg/...',
+                'مثال: منتج بقسمين فقط',
+                'B0XXXXXXXX',
+                'Generic',
+                '99 جنيه',
+                'Books',
+                'Arabic Books',
+                '',
+                '',
+                '',
+                'https://m.media-amazon.com/images/...',
+                'القسم الفرعي الفارغ يُترك فارغاً',
+                ''
             ]
         ];
 
         const ws = XLSX.utils.aoa_to_sheet(templateData);
-        const colWidths = [40, 20, 15, 15, 15, 12, 40, 30, 20];
+        const colWidths = [40, 20, 15, 15, 12, 18, 28, 22, 20, 18, 40, 30, 20];
         ws['!cols'] = colWidths.map(w => ({ wch: w }));
 
         const wb = XLSX.utils.book_new();
@@ -1842,16 +1869,26 @@
                 for (let i = 1; i < sheet_data.length; i++) {
                     const row = sheet_data[i];
                     if (row[0] && row[1]) {
+                        // الأعمدة: 0=رابط 1=اسم 2=ASIN 3=براند 4=سعر
+                        // 5..9 = Category_1..Category_5 | 10=صورة 11=وصف 12=ملاحظات
+                        const categories = [];
+                        for (let c = 5; c <= 9; c++) {
+                            const val = row[c];
+                            if (val !== undefined && val !== null && String(val).trim() !== '') {
+                                categories.push(String(val).trim());
+                            }
+                        }
                         products.push({
                             link: row[0],
                             name: String(row[1]).substring(0, 500),
                             asin: row[2] || '',
                             brand: row[3] || '',
                             price: row[4] || '',
-                            category: row[5] || '',
-                            imageUrl: row[6] || '',
-                            description: String(row[7] || '').substring(0, 2000),
-                            notes: row[8] || ''
+                            categories: categories,
+                            category: categories.join(' > '),
+                            imageUrl: row[10] || '',
+                            description: String(row[11] || '').substring(0, 2000),
+                            notes: row[12] || ''
                         });
                     }
                 }
@@ -1891,27 +1928,194 @@
 
     let jumpToProductId = null;
     
+    // ============================================
+    // 🗂️ نظام تصفّح الأقسام (Category Browser - زي أمازون)
+    // ============================================
+    // categoryPath: المسار المختار حالياً، مثال: ["Electronics","Accessories"]
+    // null = لم يبدأ التصفّح بعد (يعرض المتصفّح)
+    // [] = "كل الأقسام" (يراجع كل المنتجات عادي)
+    let categoryPath = null;
+
+    // ترجع categories الخاصة بمنتج كـ array (تدعم القديم category النصي)
+    function getProductCategories(p) {
+        if (Array.isArray(p.categories) && p.categories.length > 0) {
+            return p.categories;
+        }
+        if (p.category && typeof p.category === 'string' && p.category.trim() !== '') {
+            // دعم المنتجات القديمة: "أ > ب > ج" أو نص واحد
+            return p.category.split('>').map(s => s.trim()).filter(Boolean);
+        }
+        return [];
+    }
+
+    // هل المنتج يقع تحت المسار المختار؟
+    function productMatchesPath(p, path) {
+        if (!path || path.length === 0) return true; // كل الأقسام
+        const cats = getProductCategories(p);
+        // المنتج لازم يطابق كل مستوى في المسار بالترتيب
+        for (let i = 0; i < path.length; i++) {
+            if (cats[i] !== path[i]) return false;
+        }
+        return true;
+    }
+
+    // عرض متصفّح الأقسام (المستوى الحالي حسب categoryPath)
+    function showCategoryBrowser() {
+        const content = document.getElementById('review-content');
+        if (!content) return;
+
+        const path = categoryPath || [];
+        const level = path.length; // المستوى اللي بنعرض اختياراته
+
+        // اجمع كل القيم الممكنة في المستوى الحالي تحت المسار المختار
+        const optionsMap = {}; // value -> { total, pending }
+        (data.products || []).forEach(p => {
+            const cats = getProductCategories(p);
+            // لازم المنتج يطابق المسار للمستويات السابقة
+            let ok = true;
+            for (let i = 0; i < level; i++) {
+                if (cats[i] !== path[i]) { ok = false; break; }
+            }
+            if (!ok) return;
+            const val = cats[level];
+            if (val === undefined) return; // المنتج أقصر من المستوى ده
+            if (!optionsMap[val]) optionsMap[val] = { total: 0, pending: 0 };
+            optionsMap[val].total++;
+            if (!data.reviews[p.id]) optionsMap[val].pending++;
+        });
+
+        const options = Object.keys(optionsMap).sort();
+
+        // Breadcrumb
+        let breadcrumb = `<span style="cursor:pointer; color: var(--primary); font-weight:700;" onclick="catBrowseReset()">🗂️ كل الأقسام</span>`;
+        path.forEach((seg, idx) => {
+            breadcrumb += ` <span style="color: var(--text-muted);">›</span> `;
+            breadcrumb += `<span style="cursor:pointer; color: var(--primary); font-weight:600;" onclick="catBrowseGoTo(${idx + 1})">${esc(seg)}</span>`;
+        });
+
+        // كم منتج تحت المسار الحالي (لزر "راجع الكل هنا")
+        const underPathCount = (data.products || []).filter(p => productMatchesPath(p, path)).length;
+        const underPathPending = (data.products || []).filter(p => productMatchesPath(p, path) && !data.reviews[p.id]).length;
+
+        let optionsHtml = '';
+        if (options.length === 0) {
+            optionsHtml = `<p style="color: var(--text-secondary); text-align:center; padding: 20px;">لا توجد أقسام فرعية أخرى — اضغط "راجع كل المنتجات هنا"</p>`;
+        } else {
+            optionsHtml = '<div style="display:flex; flex-direction:column; gap:8px;">';
+            options.forEach(opt => {
+                const info = optionsMap[opt];
+                optionsHtml += `
+                    <button onclick="catBrowseInto('${esc(opt).replace(/'/g, "\\'")}')" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:var(--bg-secondary); border:2px solid var(--border); border-radius:10px; cursor:pointer; font-family:'Cairo',sans-serif; font-size:14px; color:var(--text-primary); text-align:right;">
+                        <span style="font-weight:600;">📁 ${esc(opt)}</span>
+                        <span style="font-size:12px; color:var(--text-secondary);">
+                            ${info.pending > 0 ? `<strong style="color:var(--warning);">${info.pending}</strong> للمراجعة / ` : ''}${info.total} منتج
+                        </span>
+                    </button>
+                `;
+            });
+            optionsHtml += '</div>';
+        }
+
+        content.innerHTML = `
+            <div style="margin-bottom:16px; padding:12px 14px; background:var(--bg-secondary); border-radius:10px; font-size:13px;">
+                ${breadcrumb}
+            </div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
+                ${path.length > 0 ? `<button class="btn-small" onclick="catBrowseBack()">⬅️ رجوع</button>` : ''}
+                <button class="btn-primary" style="flex:1; min-width:200px;" onclick="catBrowseReviewHere()">
+                    📋 راجع كل المنتجات هنا (${underPathPending} للمراجعة / ${underPathCount})
+                </button>
+            </div>
+
+            <h3 style="font-size:15px; margin-bottom:12px; color:var(--text-primary);">
+                ${path.length === 0 ? 'اختر القسم الرئيسي:' : 'اختر القسم الفرعي:'}
+            </h3>
+            ${optionsHtml}
+        `;
+    }
+
+    function catBrowseInto(value) {
+        if (categoryPath === null) categoryPath = [];
+        categoryPath.push(value);
+        showCategoryBrowser();
+    }
+
+    function catBrowseBack() {
+        if (categoryPath && categoryPath.length > 0) {
+            categoryPath.pop();
+            showCategoryBrowser();
+        }
+    }
+
+    function catBrowseGoTo(depth) {
+        if (categoryPath) {
+            categoryPath = categoryPath.slice(0, depth);
+            showCategoryBrowser();
+        }
+    }
+
+    function catBrowseReset() {
+        categoryPath = [];
+        showCategoryBrowser();
+    }
+
+    // المستخدم اختار "راجع كل المنتجات هنا" → ابدأ المراجعة بالفلتر الحالي
+    function catBrowseReviewHere() {
+        // categoryPath يبقى زي ما هو، نخش على المراجعة الفعلية
+        skippedProducts = new Set();
+        renderReviewProduct();
+    }
+
+    // إعادة فتح المتصفّح من داخل المراجعة
+    function backToCategoryBrowser() {
+        showCategoryBrowser();
+    }
+
     function showReview() {
-        console.log('showReview - data:', data);
-        console.log('showReview - products count:', data.products?.length);
+        // لو لسه ما اختارش قسم → اعرض المتصفّح
+        if (categoryPath === null) {
+            showCategoryBrowser();
+            return;
+        }
+        renderReviewProduct();
+    }
+
+    function renderReviewProduct() {
+        console.log('renderReviewProduct - data:', data);
         
-        // البحث عن منتج لم تتم مراجعته وليس متخطى
+        // البحث عن منتج لم تتم مراجعته وليس متخطى وضمن القسم المختار
         let pending;
         if (jumpToProductId) {
             pending = data.products?.find(p => p.id == jumpToProductId);
             jumpToProductId = null; // استخدام مرة واحدة
         }
         if (!pending) {
-            pending = data.products?.find(p => !data.reviews[p.id] && !skippedProducts.has(p.id));
+            pending = data.products?.find(p =>
+                !data.reviews[p.id] &&
+                !skippedProducts.has(p.id) &&
+                productMatchesPath(p, categoryPath)
+            );
         }
         const content = document.getElementById('review-content');
 
+        // شريط القسم المختار (يظهر دايماً فوق المراجعة)
+        const pathLabel = (categoryPath && categoryPath.length > 0)
+            ? categoryPath.join(' › ')
+            : 'كل الأقسام';
+        const catBar = `
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px; padding:10px 14px; background:var(--bg-secondary); border-radius:10px; font-size:13px;">
+                <span>🗂️ القسم: <strong style="color:var(--primary);">${esc(pathLabel)}</strong></span>
+                <button class="btn-small" onclick="backToCategoryBrowser()" style="margin:0;">🔄 تغيير القسم</button>
+            </div>
+        `;
+
         if (!pending) {
             if (skippedProducts.size > 0) {
-                content.innerHTML = `
+                content.innerHTML = catBar + `
                     <div style="text-align: center; padding: 40px 20px;">
                         <div style="font-size: 60px; margin-bottom: 16px;">🎉</div>
-                        <h3 style="color: var(--success); margin-bottom: 8px;">تمت مراجعة جميع المنتجات!</h3>
+                        <h3 style="color: var(--success); margin-bottom: 8px;">تمت مراجعة منتجات هذا القسم!</h3>
                         <p style="color: var(--text-secondary); margin-bottom: 20px;">
                             تم تخطي <strong style="color: var(--warning);">${skippedProducts.size}</strong> منتج
                         </p>
@@ -1921,11 +2125,11 @@
                     </div>
                 `;
             } else {
-                content.innerHTML = `
+                content.innerHTML = catBar + `
                     <div style="text-align: center; padding: 60px 20px;">
                         <div style="font-size: 80px; margin-bottom: 16px;">✅</div>
-                        <h3 style="color: var(--success); margin-bottom: 8px;">رائع! تمت مراجعة جميع المنتجات</h3>
-                        <p style="color: var(--text-secondary);">لا توجد منتجات في انتظار المراجعة حالياً</p>
+                        <h3 style="color: var(--success); margin-bottom: 8px;">رائع! تمت مراجعة منتجات هذا القسم</h3>
+                        <p style="color: var(--text-secondary);">اختر قسماً آخر من زر "تغيير القسم"</p>
                     </div>
                 `;
             }
@@ -2170,8 +2374,12 @@
     function skipReview() {
         console.log('⏭️ تخطي المنتج...');
         
-        // العثور على المنتج الحالي وإضافته للقائمة المتخطاة
-        const currentPending = data.products?.find(p => !data.reviews[p.id] && !skippedProducts.has(p.id));
+        // العثور على المنتج الحالي (ضمن القسم المختار) وإضافته للمتخطاة
+        const currentPending = data.products?.find(p =>
+            !data.reviews[p.id] &&
+            !skippedProducts.has(p.id) &&
+            productMatchesPath(p, categoryPath)
+        );
         if (currentPending) {
             skippedProducts.add(currentPending.id);
             console.log('✓ تم تخطي:', currentPending.name, '| ID:', currentPending.id);
@@ -2199,14 +2407,14 @@
             btn.style.fontWeight = '600';
         });
         
-        // عرض المنتج التالي
-        showReview();
+        // عرض المنتج التالي (ضمن نفس القسم)
+        renderReviewProduct();
     }
 
     function resetSkipped() {
         skippedProducts.clear();
         console.log('🔄 إعادة عرض المنتجات المتخطاة');
-        showReview();
+        renderReviewProduct();
     }
 
     function selectStatus(status) {
@@ -2264,9 +2472,9 @@
                 logActivity('مراجعة منتج', (reviewedProduct ? reviewedProduct.name : id) + ' - ' + selectedStatus);
                 selectedStatus = null;
                 
-                // تحميل البيانات الجديدة وعرض المنتج التالي
+                // تحميل البيانات الجديدة وعرض المنتج التالي (نفس القسم)
                 await loadData();
-                showReview();
+                renderReviewProduct();
             } else {
                 showToast('error', '❌ خطأ في الحفظ!');
                 if (saveBtn) saveBtn.disabled = false;
@@ -2475,6 +2683,7 @@
                     <input type="checkbox" id="select-all-cb" onchange="toggleSelectAll(this)" style="width: 16px; height: 16px; cursor: pointer;">
                 </th>
                 <th style="cursor: pointer; user-select: none;" onclick="sortBy('name')">المنتج${arrow('name')}</th>
+                <th>القسم</th>
                 <th style="cursor: pointer; user-select: none;" onclick="sortBy('date')">التاريخ${arrow('date')}</th>
                 <th style="cursor: pointer; user-select: none;" onclick="sortBy('status')">الحالة${arrow('status')}</th>
                 <th style="cursor: pointer; user-select: none;" onclick="sortBy('supplier')">المورد${arrow('supplier')}</th>
@@ -2492,6 +2701,7 @@
                 <tr>
                     <td><input type="checkbox" class="row-cb" data-pid="${p.id}" ${isChecked} onchange="toggleSelectProduct('${p.id}', this)" style="width: 16px; height: 16px; cursor: pointer;"></td>
                     <td>${esc(p.name)}</td>
+                    <td style="font-size:12px; color:var(--text-secondary);">${esc(getProductCategories(p).join(' › ')) || '-'}</td>
                     <td>${p.addedAt ? formatDate(p.addedAt) : '-'}</td>
                     <td>${r ? `<span class="status-badge ${statusClass}">${r.status}</span>` : '-'}</td>
                     <td>${esc(r?.supplier) || '-'}</td>
@@ -2507,7 +2717,7 @@
             `;
         });
 
-        document.getElementById('results-table').innerHTML = html || '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">لا توجد نتائج</td></tr>';
+        document.getElementById('results-table').innerHTML = html || '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">لا توجد نتائج</td></tr>';
         document.getElementById('page-info').textContent = `الصفحة ${currentPage} من ${totalPages}`;
         
         updateBulkBar();
@@ -2651,7 +2861,7 @@
                 p.asin || '',
                 p.brand || '',
                 p.price || '',
-                p.category || '',
+                getProductCategories(p).join(' > '),
                 p.description || '',
                 p.imageUrl || '',
                 p.notes || '',
@@ -2688,7 +2898,7 @@
                 `"${p.asin || ''}"`,
                 `"${p.brand || ''}"`,
                 `"${p.price || ''}"`,
-                `"${p.category || ''}"`,
+                `"${getProductCategories(p).join(' > ')}"`,
                 `"${(p.notes || '').replace(/"/g, '""')}"`,
                 p.addedAt ? p.addedAt.split('T')[0] : '',
                 `"${r?.status || 'لم يراجع'}"`,
@@ -3239,6 +3449,7 @@
                         <td>${esc(p.name) || '-'}</td>
                         <td>${esc(p.asin) || '-'}</td>
                         <td>${esc(p.brand) || '-'}</td>
+                        <td>${esc(getProductCategories(p).join(' › ')) || '-'}</td>
                         <td>${esc(p.price) || '-'}</td>
                         <td><span class="badge ${statusClass}">${esc(status)}</span></td>
                         <td>${esc(r?.supplier) || '-'}</td>
@@ -3480,6 +3691,7 @@
                 <th>اسم المنتج</th>
                 <th>ASIN</th>
                 <th>البراند</th>
+                <th>القسم</th>
                 <th>السعر</th>
                 <th>الحالة</th>
                 <th>المورد</th>
@@ -3637,8 +3849,10 @@
             jumpToProductId = found.id;
             // إزالته من المتخطاة لو كان متخطى
             skippedProducts.delete(found.id);
+            // اضبط المسار على "كل الأقسام" حتى يظهر المنتج مهما كان قسمه
+            if (categoryPath === null) categoryPath = [];
             showToast('success', `✓ تم الانتقال إلى: ${found.name.substring(0, 40)}`);
-            showReview();
+            renderReviewProduct();
         } else {
             showToast('error', '❌ لم يتم العثور على منتج بهذا الاسم أو ASIN');
         }
