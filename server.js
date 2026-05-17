@@ -7,6 +7,28 @@ const auth = require('./auth');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ============================================
+// 🔒 IN-MEMORY CACHE SYSTEM (Radical Fix)
+// ============================================
+
+// Memory cache لتجنب read conflicts
+let CACHE = {
+    products: [],
+    reviews: {},
+    lastSaved: {
+        products: 0,
+        reviews: 0
+    }
+};
+
+// Write queue لتجنب concurrent writes
+let writeQueue = {
+    products: null,
+    reviews: null
+};
+
+const BACKUP_DIR = path.join(process.cwd(), '.backup');
+
 // Helper function FIRST
 function getLocalIP() {
     const interfaces = os.networkInterfaces();
@@ -20,64 +42,158 @@ function getLocalIP() {
     return 'localhost';
 }
 
-// Data file paths - استخدام /tmp للتخزين المؤقت أو /home/user للدائم
+// Data file paths
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), '.data');
 const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
 const REVIEWS_FILE = path.join(DATA_DIR, 'reviews.json');
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    console.log('✓ Data directory created');
-}
+// Ensure directories exist
+[DATA_DIR, BACKUP_DIR].forEach(dir => {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+});
 
-// Load/save data from JSON files (SUPER FAST!)
-function readProducts() {
+console.log('✓ Data directories ready');
+
+// ===== BACKUP SYSTEM =====
+function createBackup(type) {
     try {
-        if (fs.existsSync(PRODUCTS_FILE)) {
-            return JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf8'));
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const sourceFile = type === 'products' ? PRODUCTS_FILE : REVIEWS_FILE;
+        const backupFile = path.join(BACKUP_DIR, `${type}_backup_${timestamp}.json`);
+        
+        if (fs.existsSync(sourceFile)) {
+            fs.copyFileSync(sourceFile, backupFile);
+            
+            // احتفظ بآخر 10 backups فقط
+            const backups = fs.readdirSync(BACKUP_DIR)
+                .filter(f => f.startsWith(`${type}_backup_`))
+                .sort()
+                .reverse();
+            
+            if (backups.length > 10) {
+                backups.slice(10).forEach(f => {
+                    fs.unlinkSync(path.join(BACKUP_DIR, f));
+                });
+            }
+            
+            return true;
         }
     } catch (e) {
-        console.error('Error reading products:', e);
+        console.error(`Backup error for ${type}:`, e);
     }
-    return [];
+    return false;
+}
+
+// ===== CACHE-BASED READ SYSTEM =====
+function readProducts() {
+    // أولاً حاول قراءة من cache إذا كانت حديثة
+    const fileTime = fs.existsSync(PRODUCTS_FILE) 
+        ? fs.statSync(PRODUCTS_FILE).mtime.getTime() 
+        : 0;
+    
+    if (CACHE.lastSaved.products >= fileTime && CACHE.products.length > 0) {
+        return CACHE.products;
+    }
+    
+    // إذا كان الملف أحدث، اقرأ من الـ disk
+    try {
+        if (fs.existsSync(PRODUCTS_FILE)) {
+            const data = JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf8'));
+            CACHE.products = data;
+            CACHE.lastSaved.products = Date.now();
+            return data;
+        }
+    } catch (e) {
+        console.error('❌ Error reading products:', e);
+    }
+    
+    return CACHE.products;
 }
 
 function readReviews() {
+    // نفس النظام للـ reviews
+    const fileTime = fs.existsSync(REVIEWS_FILE) 
+        ? fs.statSync(REVIEWS_FILE).mtime.getTime() 
+        : 0;
+    
+    if (CACHE.lastSaved.reviews >= fileTime && Object.keys(CACHE.reviews).length > 0) {
+        return CACHE.reviews;
+    }
+    
     try {
         if (fs.existsSync(REVIEWS_FILE)) {
-            return JSON.parse(fs.readFileSync(REVIEWS_FILE, 'utf8'));
+            const data = JSON.parse(fs.readFileSync(REVIEWS_FILE, 'utf8'));
+            CACHE.reviews = data;
+            CACHE.lastSaved.reviews = Date.now();
+            return data;
         }
     } catch (e) {
-        console.error('Error reading reviews:', e);
+        console.error('❌ Error reading reviews:', e);
     }
-    return {};
+    
+    return CACHE.reviews;
 }
 
+// ===== DEBOUNCED WRITE SYSTEM =====
 function saveProducts(products) {
     try {
-        // Ensure data directory exists
-        if (!fs.existsSync(DATA_DIR)) {
-            fs.mkdirSync(DATA_DIR, { recursive: true });
-        }
-        fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2), 'utf8');
+        // تحديث الـ cache فوراً
+        CACHE.products = products;
+        
+        // إنشاء backup قبل الكتابة
+        createBackup('products');
+        
+        // إلغاء أي write معلق
+        if (writeQueue.products) clearTimeout(writeQueue.products);
+        
+        // جدول write جديد (debounced بـ 500ms)
+        writeQueue.products = setTimeout(() => {
+            try {
+                fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2), 'utf8');
+                CACHE.lastSaved.products = Date.now();
+                console.log('✓ Products saved to disk');
+            } catch (e) {
+                console.error('❌ Error writing products:', e);
+            }
+        }, 500);
+        
         return true;
     } catch (e) {
-        console.error('Error saving products:', e);
+        console.error('❌ Error in saveProducts:', e);
         return false;
     }
 }
 
 function saveReviews(reviews) {
     try {
-        // Ensure data directory exists
-        if (!fs.existsSync(DATA_DIR)) {
-            fs.mkdirSync(DATA_DIR, { recursive: true });
-        }
-        fs.writeFileSync(REVIEWS_FILE, JSON.stringify(reviews, null, 2), 'utf8');
+        // تحديث الـ cache فوراً
+        CACHE.reviews = reviews;
+        
+        // إنشاء backup قبل الكتابة
+        createBackup('reviews');
+        
+        // إلغاء أي write معلق
+        if (writeQueue.reviews) clearTimeout(writeQueue.reviews);
+        
+        // جدول write جديد (debounced بـ 500ms)
+        writeQueue.reviews = setTimeout(() => {
+            try {
+                fs.writeFileSync(REVIEWS_FILE, JSON.stringify(reviews, null, 2), 'utf8');
+                CACHE.lastSaved.reviews = Date.now();
+                console.log('✓ Reviews saved to disk');
+            } catch (e) {
+                console.error('❌ Error writing reviews:', e);
+            }
+        }, 500);
+        
         return true;
     } catch (e) {
-        console.error('Error saving reviews:', e);
+        console.error('❌ Error in saveReviews:', e);
+        return false;
+    }
+}
         return false;
     }
 }
