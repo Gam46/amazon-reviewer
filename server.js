@@ -463,22 +463,33 @@ app.post('/api/products/bulk', (req, res) => {
 
         const allProducts = readProducts();
         let success = 0, failed = 0;
+        const addedProducts = [];
 
         products.forEach((p, i) => {
             if (p.name && p.link) {
-                allProducts.push({
+                // دعم categories array مع التوافق الخلفي
+                let cats = [];
+                if (Array.isArray(p.categories)) {
+                    cats = p.categories.filter(c => c && String(c).trim() !== '').map(c => String(c).trim());
+                } else if (p.category) {
+                    cats = String(p.category).split('>').map(s => s.trim()).filter(Boolean);
+                }
+                const newProduct = {
                     id: Date.now() + i,
                     link: String(p.link).trim(),
                     name: String(p.name).trim(),
                     price: String(p.price || '').trim(),
                     asin: String(p.asin || '').trim(),
                     brand: String(p.brand || '').trim(),
-                    category: String(p.category || '').trim(),
+                    categories: cats,
+                    category: cats.join(' > '),
                     imageUrl: String(p.imageUrl || '').trim(),
                     description: String(p.description || '').trim(),
                     notes: String(p.notes || '').trim(),
                     addedAt: new Date().toISOString()
-                });
+                };
+                allProducts.push(newProduct);
+                addedProducts.push(newProduct);
                 success++;
             } else {
                 failed++;
@@ -487,7 +498,7 @@ app.post('/api/products/bulk', (req, res) => {
 
         if (saveProducts(allProducts)) {
             console.log(`✓ Bulk complete: ${success} success, ${failed} failed`);
-            res.json({ success: true, success, failed, message: `تم إضافة ${success} منتج!` });
+            res.json({ success: true, success, failed, addedProducts, message: `تم إضافة ${success} منتج!` });
         } else {
             res.status(500).json({ success: false, error: 'Failed to save' });
         }
@@ -595,6 +606,47 @@ app.post('/api/reviews/:productId', (req, res) => {
         }
     } catch (error) {
         console.error('❌ Error saving review:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Bulk restore reviews (للنسخة الاحتياطية - استعادة المراجعات دفعة واحدة)
+app.post('/api/reviews/bulk', (req, res) => {
+    try {
+        const incoming = req.body.reviews || {};
+        if (typeof incoming !== 'object' || Array.isArray(incoming)) {
+            return res.status(400).json({ success: false, error: 'reviews object required' });
+        }
+
+        const reviews = readReviews();
+        let count = 0;
+
+        Object.keys(incoming).forEach(pid => {
+            const rv = incoming[pid];
+            if (rv && rv.status) {
+                reviews[pid] = {
+                    id: pid,
+                    status: rv.status || '',
+                    supplier: rv.supplier || '',
+                    purchasePrice: rv.purchasePrice ? parseFloat(rv.purchasePrice) : null,
+                    quantity: rv.quantity ? parseInt(rv.quantity) : 0,
+                    purchased: rv.purchased || false,
+                    notes: rv.notes || '',
+                    reviewedAt: rv.reviewedAt || new Date().toISOString(),
+                    reviewedBy: rv.reviewedBy || 'restored'
+                };
+                count++;
+            }
+        });
+
+        if (saveReviews(reviews)) {
+            console.log(`✓ Bulk reviews restored: ${count}`);
+            res.json({ success: true, count });
+        } else {
+            res.status(500).json({ success: false, error: 'Failed to save reviews' });
+        }
+    } catch (error) {
+        console.error('❌ Bulk reviews error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
