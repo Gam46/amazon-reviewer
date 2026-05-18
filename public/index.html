@@ -1866,11 +1866,15 @@
                 const sheet_data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
 
                 const products = [];
+                const reviewsByLink = {}; // لربط المراجعات بالمنتجات بعد الرفع
                 for (let i = 1; i < sheet_data.length; i++) {
                     const row = sheet_data[i];
                     if (row[0] && row[1]) {
-                        // الأعمدة: 0=رابط 1=اسم 2=ASIN 3=براند 4=سعر
-                        // 5..9 = Category_1..Category_5 | 10=صورة 11=وصف 12=ملاحظات
+                        // الترتيب الموحد (نفس ملف التقرير المُصدّر):
+                        // 0=رابط 1=اسم 2=ASIN 3=براند 4=سعر
+                        // 5..9 = Category_1..Category_5
+                        // 10=صورة 11=وصف 12=ملاحظات-منتج
+                        // 13=الحالة 14=المورد 15=سعر-شراء 16=الكمية 17=تم-الشراء 18=ملاحظات-مراجعة 19=تاريخ-مراجعة
                         const categories = [];
                         for (let c = 5; c <= 9; c++) {
                             const val = row[c];
@@ -1878,8 +1882,9 @@
                                 categories.push(String(val).trim());
                             }
                         }
+                        const linkVal = String(row[0]).trim();
                         products.push({
-                            link: row[0],
+                            link: linkVal,
                             name: String(row[1]).substring(0, 500),
                             asin: row[2] || '',
                             brand: row[3] || '',
@@ -1890,6 +1895,20 @@
                             description: String(row[11] || '').substring(0, 2000),
                             notes: row[12] || ''
                         });
+
+                        // لو فيه بيانات مراجعة (عمود الحالة مليان) → احفظها للاستعادة
+                        const statusVal = row[13] ? String(row[13]).trim() : '';
+                        if (statusVal && statusVal !== 'لم يراجع' && statusVal !== '') {
+                            reviewsByLink[linkVal] = {
+                                status: statusVal,
+                                supplier: row[14] ? String(row[14]).trim() : '',
+                                purchasePrice: row[15] || null,
+                                quantity: row[16] || 0,
+                                purchased: String(row[17] || '').trim() === 'نعم',
+                                notes: row[18] ? String(row[18]).trim() : '',
+                                reviewedAt: row[19] ? String(row[19]).trim() : ''
+                            };
+                        }
                     }
                 }
 
@@ -1908,10 +1927,44 @@
                     body: JSON.stringify({ products })
                 });
 
+                let restoredCount = 0;
+                if (res.ok) {
+                    const result = await res.json();
+                    // استعادة المراجعات: اربط بالـ link → id الجديد
+                    const hasReviews = Object.keys(reviewsByLink).length > 0;
+                    if (hasReviews && Array.isArray(result.addedProducts)) {
+                        const reviewsToRestore = {};
+                        result.addedProducts.forEach(ap => {
+                            const rv = reviewsByLink[String(ap.link).trim()];
+                            if (rv) {
+                                reviewsToRestore[ap.id] = rv;
+                                restoredCount++;
+                            }
+                        });
+                        if (restoredCount > 0) {
+                            try {
+                                await fetch('/api/reviews/bulk', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${token}`
+                                    },
+                                    body: JSON.stringify({ reviews: reviewsToRestore })
+                                });
+                            } catch (err) {
+                                console.error('Restore reviews error:', err);
+                            }
+                        }
+                    }
+                }
+
                 hideLoading();
                 if (res.ok) {
-                    showToast('success', `✓ تم رفع ${products.length} منتج بنجاح!`);
-                    logActivity('رفع ملف', `تم رفع ${products.length} منتج عبر Excel`);
+                    const msg = restoredCount > 0
+                        ? `✓ تم رفع ${products.length} منتج واستعادة ${restoredCount} مراجعة!`
+                        : `✓ تم رفع ${products.length} منتج بنجاح!`;
+                    showToast('success', msg);
+                    logActivity('رفع ملف', `تم رفع ${products.length} منتج${restoredCount > 0 ? ` + استعادة ${restoredCount} مراجعة` : ''}`);
                     document.getElementById('excel-file').value = '';
                     await loadData();
                 } else {
@@ -2851,13 +2904,14 @@
     }
 
     function downloadExcel() {
-        const headers = ['المنتج', 'ASIN', 'البراند', 'السعر على أمازون', 'Category_1', 'Category_2', 'Category_3', 'Category_4', 'Category_5', 'الوصف', 'رابط الصورة', 'ملاحظات المنتج', 'التاريخ المضاف', 'الحالة', 'المورد 🏪', 'سعر الشراء', 'الكمية', 'تم الشراء', 'ملاحظات المراجعة', 'تاريخ المراجعة'];
+        const headers = ['الرابط', 'الاسم', 'ASIN', 'البراند', 'السعر', 'Category_1', 'Category_2', 'Category_3', 'Category_4', 'Category_5', 'رابط الصورة', 'الوصف', 'ملاحظات المنتج', 'الحالة', 'المورد', 'سعر الشراء', 'الكمية', 'تم الشراء', 'ملاحظات المراجعة', 'تاريخ المراجعة'];
         const ws_data = [headers];
 
         data.products.forEach(p => {
             const r = data.reviews[p.id];
             const cats = getProductCategories(p);
             ws_data.push([
+                p.link || '',
                 p.name || '',
                 p.asin || '',
                 p.brand || '',
@@ -2867,11 +2921,10 @@
                 cats[2] || '',
                 cats[3] || '',
                 cats[4] || '',
-                p.description || '',
                 p.imageUrl || '',
+                p.description || '',
                 p.notes || '',
-                p.addedAt ? p.addedAt.split('T')[0] : '',
-                r?.status || 'لم يراجع',
+                r?.status || '',
                 r?.supplier || '',
                 r?.purchasePrice || '',
                 r?.quantity || '',
@@ -2884,7 +2937,7 @@
         const ws = XLSX.utils.aoa_to_sheet(ws_data);
         
         // تنسيق الأعمدة
-        const colWidths = [25, 15, 15, 15, 18, 28, 22, 20, 18, 30, 40, 20, 15, 15, 15, 12, 8, 10, 20, 15];
+        const colWidths = [40, 25, 15, 15, 12, 18, 28, 22, 20, 18, 40, 30, 20, 15, 15, 15, 12, 10, 20, 15];
         ws['!cols'] = colWidths.map(w => ({ wch: w }));
 
         const wb = XLSX.utils.book_new();
@@ -2893,30 +2946,33 @@
     }
 
     function downloadCSV() {
-        const headers = ['المنتج', 'ASIN', 'البراند', 'السعر على أمازون', 'Category_1', 'Category_2', 'Category_3', 'Category_4', 'Category_5', 'ملاحظات المنتج', 'التاريخ المضاف', 'الحالة', 'المورد', 'سعر الشراء', 'الكمية', 'تم الشراء', 'ملاحظات المراجعة', 'تاريخ المراجعة'];
+        const headers = ['الرابط', 'الاسم', 'ASIN', 'البراند', 'السعر', 'Category_1', 'Category_2', 'Category_3', 'Category_4', 'Category_5', 'رابط الصورة', 'الوصف', 'ملاحظات المنتج', 'الحالة', 'المورد', 'سعر الشراء', 'الكمية', 'تم الشراء', 'ملاحظات المراجعة', 'تاريخ المراجعة'];
         let csv = headers.join(',') + '\n';
 
         data.products.forEach(p => {
             const r = data.reviews[p.id];
             const cats = getProductCategories(p);
+            const q = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
             const row = [
-                `"${p.name || ''}"`,
-                `"${p.asin || ''}"`,
-                `"${p.brand || ''}"`,
-                `"${p.price || ''}"`,
-                `"${cats[0] || ''}"`,
-                `"${cats[1] || ''}"`,
-                `"${cats[2] || ''}"`,
-                `"${cats[3] || ''}"`,
-                `"${cats[4] || ''}"`,
-                `"${(p.notes || '').replace(/"/g, '""')}"`,
-                p.addedAt ? p.addedAt.split('T')[0] : '',
-                `"${r?.status || 'لم يراجع'}"`,
-                `"${r?.supplier || ''}"`,
+                q(p.link || ''),
+                q(p.name || ''),
+                q(p.asin || ''),
+                q(p.brand || ''),
+                q(p.price || ''),
+                q(cats[0] || ''),
+                q(cats[1] || ''),
+                q(cats[2] || ''),
+                q(cats[3] || ''),
+                q(cats[4] || ''),
+                q(p.imageUrl || ''),
+                q(p.description || ''),
+                q(p.notes || ''),
+                q(r?.status || ''),
+                q(r?.supplier || ''),
                 r?.purchasePrice || '',
                 r?.quantity || '',
                 r?.purchased ? 'نعم' : 'لا',
-                `"${(r?.notes || '').replace(/"/g, '""')}"`,
+                q(r?.notes || ''),
                 r?.reviewedAt ? r.reviewedAt.split('T')[0] : ''
             ];
             csv += row.join(',') + '\n';
